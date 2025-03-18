@@ -21,13 +21,13 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "first_name")
+    @Column(name = "first_name", nullable = false)
     private String firstName;
 
-    @Column(name = "last_name")
+    @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(name = "email", unique = true)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -53,7 +53,7 @@ public class User {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, name = "employment")
+    @Column(name = "employment")
     private Employment employment;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
