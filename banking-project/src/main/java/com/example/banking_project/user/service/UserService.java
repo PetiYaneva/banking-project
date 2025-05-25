@@ -5,9 +5,11 @@ import com.example.banking_project.security.UserDetailsImpl;
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.user.model.UserRole;
 import com.example.banking_project.user.repository.UserRepository;
+import com.example.banking_project.user.validation.UserValidationService;
 import com.example.banking_project.web.dto.RegisterRequest;
 import jakarta.transaction.Transactional;
 import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,21 +23,15 @@ import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final UserValidationService userValidationService;
 
     public User registerUser(RegisterRequest registerRequest){
-        Optional<User> userOptional = userRepository.findByEmail(registerRequest.getEmail());
-        if(userOptional.isPresent()){
-            throw new UserAlreadyExistException("User with email [%s] already exist.".formatted(registerRequest.getEmail()));
-        }
+        userValidationService.validateUserRegister(registerRequest);
 
         User user = userRepository.save(initializeUser(registerRequest));
 
@@ -61,7 +57,7 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User Not Found with username: " + email)
+                        "User not Found with username: " + email)
                 );
 
         return UserDetailsImpl.build(user);

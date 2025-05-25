@@ -1,6 +1,7 @@
 package com.example.banking_project.web;
 
 import com.example.banking_project.security.AuthenticationService;
+import com.example.banking_project.user.validation.UserValidationService;
 import com.example.banking_project.web.dto.AuthenticationRequest;
 import com.example.banking_project.web.dto.AuthenticationResponse;
 import com.example.banking_project.web.dto.RegisterRequest;

@@ -2,6 +2,7 @@ package com.example.banking_project.security;
 
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.user.service.UserService;
+import com.example.banking_project.user.validation.UserValidationService;
 import com.example.banking_project.web.dto.AuthenticationRequest;
 import com.example.banking_project.web.dto.AuthenticationResponse;
 import com.example.banking_project.web.dto.RegisterRequest;
@@ -21,6 +22,7 @@ public class AuthenticationService {
     private final UserService userService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserValidationService userValidationService;
 
 
     public AuthenticationResponse register (RegisterRequest registerRequest){
@@ -39,6 +41,7 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest authenticationRequest) {
+        userValidationService.validateUserLogin(authenticationRequest);
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         authenticationRequest.getEmail(),
