@@ -1,4 +1,4 @@
-package com.example.banking_project.web;
+package com.example.banking_project.web.controllers;
 
 import com.example.banking_project.security.AuthenticationService;
 import com.example.banking_project.user.validation.UserValidationService;

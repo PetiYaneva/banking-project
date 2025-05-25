@@ -1,5 +1,6 @@
 package com.example.banking_project.account.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import com.example.banking_project.user.model.User;
@@ -30,6 +31,7 @@ public class Account {
     @Column(name = "iban")
     private String iban;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;

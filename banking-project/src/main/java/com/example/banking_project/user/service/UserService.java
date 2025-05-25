@@ -1,6 +1,5 @@
 package com.example.banking_project.user.service;
 
-import com.example.banking_project.exception.UserAlreadyExistException;
 import com.example.banking_project.security.UserDetailsImpl;
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.user.model.UserRole;
@@ -8,7 +7,6 @@ import com.example.banking_project.user.repository.UserRepository;
 import com.example.banking_project.user.validation.UserValidationService;
 import com.example.banking_project.web.dto.RegisterRequest;
 import jakarta.transaction.Transactional;
-import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -30,7 +28,7 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final UserValidationService userValidationService;
 
-    public User registerUser(RegisterRequest registerRequest){
+    public User register(RegisterRequest registerRequest){
         userValidationService.validateUserRegister(registerRequest);
 
         User user = userRepository.save(initializeUser(registerRequest));
@@ -61,5 +59,9 @@ public class UserService implements UserDetailsService {
                 );
 
         return UserDetailsImpl.build(user);
+    }
+
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }
