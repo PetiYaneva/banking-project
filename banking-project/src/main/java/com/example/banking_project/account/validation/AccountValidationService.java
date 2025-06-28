@@ -11,5 +11,6 @@ public interface AccountValidationService {
     void validateAccountExistsByIban(String iban);
     void validateOwnership(UUID accountId, Long userId);
     void validateSufficientBalance(UUID accountId, BigDecimal amount);
+    void validateTransferRequest(UUID senderAccountId, UUID receiverAccountId, BigDecimal amount);
 }
 

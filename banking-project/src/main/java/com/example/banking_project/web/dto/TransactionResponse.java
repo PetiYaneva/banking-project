@@ -15,8 +15,6 @@ public class TransactionResponse {
     private BigDecimal amount;
     private String transactionStatus;
     private String transactionType;
-    private String sender;
-    private String receiver;
     private String description;
     private String failureReason;
     private LocalDate createdOn;
@@ -25,6 +23,4 @@ public class TransactionResponse {
     private boolean isExpense;
     private UUID accountId;
     private UUID userId;
-    private UUID incomeId;
-    private UUID expenseId;
 }

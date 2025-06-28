@@ -3,10 +3,8 @@ package com.example.banking_project.transaction.service;
 import com.example.banking_project.account.service.AccountService;
 import com.example.banking_project.transaction.model.Transaction;
 import com.example.banking_project.transaction.model.TransactionStatus;
-import com.example.banking_project.transaction.model.TransactionType;
 import com.example.banking_project.transaction.repository.TransactionRepository;
 import com.example.banking_project.user.model.User;
-import com.example.banking_project.user.repository.UserRepository;
 import com.example.banking_project.user.service.UserService;
 import com.example.banking_project.web.dto.ExpenseRequest;
 import com.example.banking_project.web.dto.IncomeRequest;
@@ -16,15 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.Currency;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
-    private final AccountService accountService;
     private final UserService userService;
     private final IncomeService incomeService;
     private final ExpenseService expenseService;
@@ -39,7 +34,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .currency(request.getCurrency())
                 .description(request.getDescription())
                 .transactionStatus(TransactionStatus.SUCCEEDED)
-                .account(accountService.getAccountById(request.getAccountId()))
+                .account(request.getAccount())
                 .isExpense(request.getIsExpense())
                 .isIncome(request.getIsIncome())
                 .transactionType(request.getTransactionType())
@@ -70,6 +65,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .userId(transaction.getUser().getId())
                 .isExpense(transaction.getIsExpense())
                 .isIncome(transaction.getIsIncome())
+                .createdOn(transaction.getCreatedOn())
                 .build();
     }
 }
