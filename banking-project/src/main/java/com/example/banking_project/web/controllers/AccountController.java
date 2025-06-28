@@ -46,14 +46,8 @@ public class AccountController {
     }
 
     @PostMapping("/accounts/transfer")
-    public ResponseEntity<TransferResponse> transferMoney(@PathVariable String iban,
-                                                          @RequestBody TransferRequest transferRequest) {
-        return ResponseEntity.ok(accountService.transfer(
-                transferRequest.getSenderIban(),
-                transferRequest.getReceiverIban(),
-                transferRequest.getAmount(),
-                transferRequest.getDescription()
-        ));
+    public ResponseEntity<TransferResponse> transferMoney(@RequestBody TransferRequest request) {
+        return ResponseEntity.ok(accountService.transfer(request));
     }
 
     @GetMapping("/accounts/{iban}")

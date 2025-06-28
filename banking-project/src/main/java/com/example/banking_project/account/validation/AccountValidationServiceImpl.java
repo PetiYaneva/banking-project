@@ -30,6 +30,7 @@ public class AccountValidationServiceImpl implements AccountValidationService {
         }
     }
 
+
     @Override
     public void validateOwnership(UUID accountId, Long userId) {
         Account account = accountRepository.findById(accountId)

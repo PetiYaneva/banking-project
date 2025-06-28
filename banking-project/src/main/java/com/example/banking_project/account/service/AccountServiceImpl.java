@@ -10,6 +10,7 @@ import com.example.banking_project.transaction.model.TransactionType;
 import com.example.banking_project.transaction.repository.TransactionRepository;
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.web.dto.CreateAccountRequest;
+import com.example.banking_project.web.dto.TransferRequest;
 import com.example.banking_project.web.dto.TransferResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -76,36 +77,36 @@ public class AccountServiceImpl implements AccountService{
 
     @Transactional
     @Override
-    public TransferResponse transfer(String senderIban, String receiverIban, BigDecimal amount, String description) {
-        accountValidationService.validateAccountExistsByIban(senderIban);
-        accountValidationService.validateAccountExistsByIban(receiverIban);
+    public TransferResponse transfer(TransferRequest request) {
+        accountValidationService.validateAccountExistsByIban(request.getSenderIban());
+        accountValidationService.validateAccountExistsByIban(request.getReceiverIban());
 
-        Account sender = accountRepository.findAccountByIban(senderIban)
+        Account sender = accountRepository.findAccountByIban(request.getSenderIban())
                 .orElseThrow(() -> new ResourceNotFoundException("Sender account not found"));
 
-        Account receiver = accountRepository.findAccountByIban(receiverIban)
+        Account receiver = accountRepository.findAccountByIban(request.getReceiverIban())
                 .orElseThrow(() -> new ResourceNotFoundException("Receiver account not found"));
 
         if (sender.getIban().equals(receiver.getIban())) {
             throw new BusinessRuleViolationException("Sender and receiver cannot be the same account.");
         }
 
-        accountValidationService.validateSufficientBalance(sender.getId(), amount);
+        accountValidationService.validateSufficientBalance(sender.getId(), request.getAmount());
 
-        sender.setBalance(sender.getBalance().subtract(amount));
-        receiver.setBalance(receiver.getBalance().add(amount));
+        sender.setBalance(sender.getBalance().subtract(request.getAmount()));
+        receiver.setBalance(receiver.getBalance().add(request.getAmount()));
 
         accountRepository.save(sender);
         accountRepository.save(receiver);
 
         Transaction transaction = Transaction.builder()
-                .sender(senderIban)
-                .receiver(receiverIban)
+                .sender(request.getSenderIban())
+                .receiver(request.getReceiverIban())
                 .transactionStatus(TransactionStatus.SUCCEEDED)
-                .amount(amount)
+                .amount(request.getAmount())
                 .currency(Currency.getInstance("BGN"))
                 .transactionType(TransactionType.DEPOSIT)
-                .description(description)
+                .description(request.getDescription())
                 .createdOn(LocalDate.now())
                 .account(sender)
                 .user(sender.getUser())

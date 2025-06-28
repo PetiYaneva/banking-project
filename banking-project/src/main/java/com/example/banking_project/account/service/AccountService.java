@@ -2,6 +2,7 @@ package com.example.banking_project.account.service;
 
 import com.example.banking_project.account.model.Account;
 import com.example.banking_project.web.dto.CreateAccountRequest;
+import com.example.banking_project.web.dto.TransferRequest;
 import com.example.banking_project.web.dto.TransferResponse;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,7 @@ public interface AccountService {
     Account updateBalance(UUID accountId, BigDecimal newBalance);
     void deleteAccount(UUID accountId);
 
-    TransferResponse transfer(String senderIban, String receiverIban, BigDecimal amount, String description);
+    TransferResponse transfer(TransferRequest request);
 
     // Допълнително:
     List<Account> getAccountsByUserId(UUID userId);
