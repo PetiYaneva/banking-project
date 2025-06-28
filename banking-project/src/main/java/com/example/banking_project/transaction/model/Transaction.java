@@ -34,12 +34,6 @@ public class Transaction {
     @Column(name = "transaction_type", nullable = false)
     private TransactionType transactionType;
 
-    @Column(name = "sender", nullable = false)
-    private String sender;
-
-    @Column(name = "receiver", nullable = false)
-    private String receiver;
-
     @Column(name = "description", nullable = false)
     private String description;
 
@@ -51,6 +45,12 @@ public class Transaction {
 
     @Column(name = "currency", nullable = false)
     private Currency currency;
+
+    @Column(name = "is_income", nullable = false)
+    private Boolean isIncome;
+
+    @Column(name = "is_expense", nullable = false)
+    private Boolean isExpense;
 
     @ManyToOne
     @JoinColumn(name = "account_id", referencedColumnName = "id", nullable = false)

@@ -51,8 +51,9 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
-    public Optional<Account> getAccountById(UUID id) {
-        return accountRepository.findAccountById(id);
+    public Account getAccountById(UUID id) {
+        return accountRepository.findAccountById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
     @Override
@@ -100,8 +101,6 @@ public class AccountServiceImpl implements AccountService{
         accountRepository.save(receiver);
 
         Transaction transaction = Transaction.builder()
-                .sender(request.getSenderIban())
-                .receiver(request.getReceiverIban())
                 .transactionStatus(TransactionStatus.SUCCEEDED)
                 .amount(request.getAmount())
                 .currency(Currency.getInstance("BGN"))
@@ -114,8 +113,6 @@ public class AccountServiceImpl implements AccountService{
 
          transactionRepository.save(transaction);
         return TransferResponse.builder()
-                .senderIban(transaction.getSender())
-                .receiverIban(transaction.getReceiver())
                 .amount(transaction.getAmount())
                 .currency(transaction.getCurrency().getCurrencyCode())
                 .description(transaction.getDescription())
