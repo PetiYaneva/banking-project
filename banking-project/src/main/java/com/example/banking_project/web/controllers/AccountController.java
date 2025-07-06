@@ -2,7 +2,9 @@ package com.example.banking_project.web.controllers;
 
 import com.example.banking_project.account.model.Account;
 import com.example.banking_project.account.service.AccountService;
+import com.example.banking_project.transaction.service.TransactionService;
 import com.example.banking_project.web.dto.CreateAccountRequest;
+import com.example.banking_project.web.dto.TransactionTransferResponse;
 import com.example.banking_project.web.dto.TransferRequest;
 import com.example.banking_project.web.dto.TransferResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class AccountController {
 
     private final AccountService accountService;
+    private final TransactionService transactionService;
 
     @GetMapping("/users/me/accounts")
     public ResponseEntity<List<Account>> getUserAccounts(HttpServletRequest request) {
@@ -51,10 +54,14 @@ public class AccountController {
     }
 
     @GetMapping("/accounts/{iban}")
-    public ResponseEntity<Account> getAccountByIban(@PathVariable String iban) {
-        return accountService.getAccountByIban(iban)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public Account getAccountByIban(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.getAccountByIban(iban)).getBody();
+    }
+
+    @GetMapping("/{id}/transactions")
+    public ResponseEntity<List<TransactionTransferResponse>> getByAccount(@PathVariable UUID id) {
+        List<TransactionTransferResponse> transactions = transactionService.getTransactionsByAccount(id);
+        return ResponseEntity.ok(transactions);
     }
 }
 

@@ -7,7 +7,6 @@ import com.example.banking_project.web.dto.TransferResponse;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface AccountService {
@@ -15,7 +14,7 @@ public interface AccountService {
     List<Account> getAllAccounts();
 
     Account getAccountById(UUID id);
-    Optional<Account> getAccountByIban(String iban);
+    Account getAccountByIban(String iban);
 
     Account updateBalance(UUID accountId, BigDecimal newBalance);
     void deleteAccount(UUID accountId);

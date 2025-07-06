@@ -51,8 +51,9 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
-    public Optional<Account> getAccountByIban(String iban) {
-        return accountRepository.findAccountByIban(iban);
+    public Account getAccountByIban(String iban) {
+        return accountRepository.findAccountByIban(iban)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
     @Override
@@ -87,14 +88,14 @@ public class AccountServiceImpl implements AccountService{
         updateBalance(sender.getId(), sender.getBalance().subtract(request.getAmount()));
         updateBalance(receiver.getId(), receiver.getBalance().add(request.getAmount()));
 
-        TransactionRequest transactionRequestSender = buildTransactionRequest(
+        TransactionTransferRequest transactionRequestSender = buildTransactionRequest(
                 request, sender, sender.getUser().getId(), false, true);
 
-        TransactionRequest transactionRequestReceiver = buildTransactionRequest(
+        TransactionTransferRequest transactionRequestReceiver = buildTransactionRequest(
                 request, receiver, receiver.getUser().getId(), true, false);
 
-        TransactionResponse transactionReceiver = transactionService.createTransaction(transactionRequestReceiver);
-        TransactionResponse transactionSender = transactionService.createTransaction(transactionRequestSender);
+        TransactionTransferResponse transactionReceiver = transactionService.createTransactionTransfer(transactionRequestReceiver);
+        TransactionTransferResponse transactionSender = transactionService.createTransactionTransfer(transactionRequestSender);
 
         return TransferResponse.builder()
                 .senderIban(sender.getIban())
@@ -108,9 +109,9 @@ public class AccountServiceImpl implements AccountService{
                 .build();
     }
 
-    private TransactionRequest buildTransactionRequest(TransferRequest transferRequest, Account account, UUID userId,
-                                                       Boolean isIncome, Boolean isExpense) {
-        return TransactionRequest.builder()
+    private TransactionTransferRequest buildTransactionRequest(TransferRequest transferRequest, Account account, UUID userId,
+                                                               Boolean isIncome, Boolean isExpense) {
+        return TransactionTransferRequest.builder()
                 .account(account)
                 .transactionType(TransactionType.TRANSFER)
                 .amount(transferRequest.getAmount())

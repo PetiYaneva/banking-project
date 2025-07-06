@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class TransactionResponse {
+public class TransactionTransferResponse {
     private UUID id;
     private BigDecimal amount;
     private String transactionStatus;
@@ -21,5 +21,6 @@ public class TransactionResponse {
     private Currency currency;
     private boolean isIncome;
     private boolean isExpense;
+    private UUID accountId;
     private UUID userId;
 }

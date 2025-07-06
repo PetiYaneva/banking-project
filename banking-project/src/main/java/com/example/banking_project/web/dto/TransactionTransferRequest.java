@@ -11,12 +11,13 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class TransactionRequest {
+public class TransactionTransferRequest {
     private BigDecimal amount;
     private Currency currency;
     private String description;
-    private String iban;
     private Account account;
     private UUID userId;
+    private Boolean isIncome;
+    private Boolean isExpense;
     private TransactionType transactionType;
 }
