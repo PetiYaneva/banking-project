@@ -13,8 +13,23 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AccountValidationServiceImpl implements AccountValidationService {
-
     private final AccountRepository accountRepository;
+
+    @Override
+    public void validateTransferRequest(UUID senderAccountId, UUID receiverAccountId, BigDecimal amount) {
+        validateAccountExistsById(senderAccountId);
+        validateAccountExistsById(receiverAccountId);
+
+        if (senderAccountId.equals(receiverAccountId)) {
+            throw new BusinessRuleViolationException("The sender and receiver accounts must be different.");
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleViolationException("Transfer amount must be positive.");
+        }
+
+        validateSufficientBalance(senderAccountId, amount);
+    }
 
     @Override
     public void validateAccountExistsById(UUID accountId) {

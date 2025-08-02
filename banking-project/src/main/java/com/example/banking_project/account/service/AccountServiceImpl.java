@@ -3,22 +3,16 @@ package com.example.banking_project.account.service;
 import com.example.banking_project.account.model.Account;
 import com.example.banking_project.account.repository.AccountRepository;
 import com.example.banking_project.account.validation.AccountValidationService;
-import com.example.banking_project.exception.BusinessRuleViolationException;
-import com.example.banking_project.transaction.model.Transaction;
-import com.example.banking_project.transaction.model.TransactionStatus;
 import com.example.banking_project.transaction.model.TransactionType;
-import com.example.banking_project.transaction.repository.TransactionRepository;
+import com.example.banking_project.transaction.service.TransactionService;
 import com.example.banking_project.user.model.User;
-import com.example.banking_project.web.dto.CreateAccountRequest;
-import com.example.banking_project.web.dto.TransferRequest;
-import com.example.banking_project.web.dto.TransferResponse;
+import com.example.banking_project.web.dto.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -26,7 +20,7 @@ import java.util.*;
 public class AccountServiceImpl implements AccountService{
     private final AccountRepository accountRepository;
     private final AccountValidationService accountValidationService;
-    private final TransactionRepository transactionRepository;
+    private final TransactionService transactionService;
 
     @Override
     public Account create(CreateAccountRequest request, UUID userId) {
@@ -51,13 +45,15 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
-    public Optional<Account> getAccountById(UUID id) {
-        return accountRepository.findAccountById(id);
+    public Account getAccountById(UUID id) {
+        return accountRepository.findAccountById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
     @Override
-    public Optional<Account> getAccountByIban(String iban) {
-        return accountRepository.findAccountByIban(iban);
+    public Account getAccountByIban(String iban) {
+        return accountRepository.findAccountByIban(iban)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     }
 
     @Override
@@ -87,41 +83,43 @@ public class AccountServiceImpl implements AccountService{
         Account receiver = accountRepository.findAccountByIban(request.getReceiverIban())
                 .orElseThrow(() -> new ResourceNotFoundException("Receiver account not found"));
 
-        if (sender.getIban().equals(receiver.getIban())) {
-            throw new BusinessRuleViolationException("Sender and receiver cannot be the same account.");
-        }
+        accountValidationService.validateTransferRequest(sender.getId(), receiver.getId(), request.getAmount());
 
-        accountValidationService.validateSufficientBalance(sender.getId(), request.getAmount());
+        updateBalance(sender.getId(), sender.getBalance().subtract(request.getAmount()));
+        updateBalance(receiver.getId(), receiver.getBalance().add(request.getAmount()));
 
-        sender.setBalance(sender.getBalance().subtract(request.getAmount()));
-        receiver.setBalance(receiver.getBalance().add(request.getAmount()));
+        TransactionTransferRequest transactionRequestSender = buildTransactionRequest(
+                request, sender, sender.getUser().getId(), false, true);
 
-        accountRepository.save(sender);
-        accountRepository.save(receiver);
+        TransactionTransferRequest transactionRequestReceiver = buildTransactionRequest(
+                request, receiver, receiver.getUser().getId(), true, false);
 
-        Transaction transaction = Transaction.builder()
-                .sender(request.getSenderIban())
-                .receiver(request.getReceiverIban())
-                .transactionStatus(TransactionStatus.SUCCEEDED)
-                .amount(request.getAmount())
-                .currency(Currency.getInstance("BGN"))
-                .transactionType(TransactionType.DEPOSIT)
-                .description(request.getDescription())
-                .createdOn(LocalDate.now())
-                .account(sender)
-                .user(sender.getUser())
-                .build();
+        TransactionTransferResponse transactionReceiver = transactionService.createTransactionTransfer(transactionRequestReceiver);
+        TransactionTransferResponse transactionSender = transactionService.createTransactionTransfer(transactionRequestSender);
 
-         transactionRepository.save(transaction);
         return TransferResponse.builder()
-                .senderIban(transaction.getSender())
-                .receiverIban(transaction.getReceiver())
-                .amount(transaction.getAmount())
-                .currency(transaction.getCurrency().getCurrencyCode())
-                .description(transaction.getDescription())
-                .status(transaction.getTransactionStatus().name())
-                .createdOn(transaction.getCreatedOn())
-                .transactionId(transaction.getId().toString())
+                .senderIban(sender.getIban())
+                .receiverIban(receiver.getIban())
+                .amount(transactionReceiver.getAmount())
+                .currency(transactionReceiver.getCurrency().getCurrencyCode().toString())
+                .description(transactionReceiver.getDescription())
+                .status(transactionReceiver.getTransactionStatus().toString())
+                .createdOn(transactionReceiver.getCreatedOn())
+                .transactionId(transactionSender.getId().toString())
+                .build();
+    }
+
+    private TransactionTransferRequest buildTransactionRequest(TransferRequest transferRequest, Account account, UUID userId,
+                                                               Boolean isIncome, Boolean isExpense) {
+        return TransactionTransferRequest.builder()
+                .account(account)
+                .transactionType(TransactionType.TRANSFER)
+                .amount(transferRequest.getAmount())
+                .currency(Currency.getInstance(transferRequest.getCurrency()))
+                .description(transferRequest.getDescription())
+                .isExpense(isExpense)
+                .isIncome(isIncome)
+                .userId(userId)
                 .build();
     }
 

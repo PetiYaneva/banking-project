@@ -12,4 +12,5 @@ public class TransferRequest {
     private String receiverIban;
     private BigDecimal amount;
     private String description;
+    private String currency;
 }

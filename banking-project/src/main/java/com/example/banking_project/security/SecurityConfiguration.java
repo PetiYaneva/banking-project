@@ -19,6 +19,9 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
+    //todo: add authorization needed for endpoints:
+    //                              - accounts
+    //                              - transactions
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
