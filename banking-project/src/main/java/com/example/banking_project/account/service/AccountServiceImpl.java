@@ -101,7 +101,7 @@ public class AccountServiceImpl implements AccountService{
                 .senderIban(sender.getIban())
                 .receiverIban(receiver.getIban())
                 .amount(transactionReceiver.getAmount())
-                .currency(transactionReceiver.getCurrency().getCurrencyCode())
+                .currency(transactionReceiver.getCurrency().getCurrencyCode().toString())
                 .description(transactionReceiver.getDescription())
                 .status(transactionReceiver.getTransactionStatus().toString())
                 .createdOn(transactionReceiver.getCreatedOn())

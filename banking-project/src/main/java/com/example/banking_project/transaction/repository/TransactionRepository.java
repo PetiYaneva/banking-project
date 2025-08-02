@@ -1,7 +1,7 @@
 package com.example.banking_project.transaction.repository;
 
 import com.example.banking_project.transaction.model.Transaction;
-import com.example.banking_project.web.dto.TransactionTransferResponse;
+import com.example.banking_project.web.dto.TransactionTransferView;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,7 +31,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         WHERE t.user_id = :userId
         AND t.is_income IS TRUE
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getAllIncomesByUserId(@Param(value = "userId")UUID userId);
+    List<TransactionTransferView> getAllIncomesByUserId(@Param(value = "userId")UUID userId);
 
     @Query(value = """
         SELECT
@@ -51,7 +51,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         WHERE t.user_id = :userId
         AND t.is_expense IS TRUE
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getAllExpensesByUserId(@Param(value = "userId")UUID userId);
+    List<TransactionTransferView> getAllExpensesByUserId(@Param(value = "userId")UUID userId);
 
     @Query(value = """
         SELECT
@@ -72,7 +72,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         AND t.created_on BETWEEN :startDate AND :endDate
         ORDER BY t.created_on DESC
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getTransactionsByUserAndPeriod(@Param(value = "userId")UUID userId,
+    List<TransactionTransferView> getTransactionsByUserAndPeriod(@Param(value = "userId")UUID userId,
                                                                      @Param(value = "startDate")LocalDate startDate,
                                                                      @Param(value = "endDate")LocalDate endDate);
 
@@ -96,7 +96,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         AND t.is_income IS TRUE
         ORDER BY t.created_on DESC
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getIncomesByUserAndPeriod(@Param(value = "userId")UUID userId,
+    List<TransactionTransferView> getIncomesByUserAndPeriod(@Param(value = "userId")UUID userId,
                                                                  @Param(value = "startDate")LocalDate startDate,
                                                                  @Param(value = "endDate")LocalDate endDate);
 
@@ -120,7 +120,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
           AND t.is_expense IS TRUE
         ORDER BY t.created_on DESC
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getExpensesByUserAndPeriod(@Param(value = "userId")UUID userId,
+    List<TransactionTransferView> getExpensesByUserAndPeriod(@Param(value = "userId")UUID userId,
                                                                   @Param(value = "startDate")LocalDate startDate,
                                                                   @Param(value = "endDate")LocalDate endDate);
 
@@ -139,10 +139,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             t.account_id AS accountId,
             t.user_id AS userId
         FROM transactions t
-        WHERE t.user_id = :accountId
+        WHERE t.account_id = :accountId
         ORDER BY t.created_on DESC
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getTransactionsByAccount(@Param(value = "accountId")UUID userId);
+    List<TransactionTransferView> getTransactionsByAccount(@Param(value = "accountId")UUID accountId);
 
 
     @Query(value = """
@@ -164,7 +164,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
       AND t.transaction_type = :type
     ORDER BY t.created_on DESC
     """, nativeQuery = true)
-    List<TransactionTransferResponse> findByUserIdAndType(
+    List<TransactionTransferView> findByUserIdAndType(
             @Param("userId") UUID userId,
             @Param("type") String type
     );
@@ -186,6 +186,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         FROM public.transactions t
         WHERE t.user_id = :userId
         """, nativeQuery = true)
-    List<TransactionTransferResponse> getAllTransactionsByUserId(@Param(value = "userId")UUID userId);
+    List<TransactionTransferView> getAllTransactionsByUserId(@Param(value = "userId")UUID userId);
 
 }

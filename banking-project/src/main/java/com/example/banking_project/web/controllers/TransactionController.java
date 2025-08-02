@@ -1,6 +1,5 @@
 package com.example.banking_project.web.controllers;
 
-import com.example.banking_project.account.service.AccountService;
 import com.example.banking_project.transaction.model.TransactionType;
 import com.example.banking_project.transaction.service.TransactionService;
 import com.example.banking_project.web.dto.TransactionRequest;
@@ -21,10 +20,9 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final AccountService accountService;
 
     // Създаване на трансакция
-    @PostMapping
+    @PostMapping("/new")
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody TransactionRequest request) {
         TransactionResponse response = transactionService.createTransaction(request);
         return ResponseEntity.ok(response);
@@ -32,14 +30,14 @@ public class TransactionController {
 
     // Трансакция по ID
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionTransferResponse> getById(@RequestParam UUID id) {
+    public ResponseEntity<TransactionTransferResponse> getById(@PathVariable UUID id) {
         TransactionTransferResponse response = transactionService.getTransactionById(id);
         return ResponseEntity.ok(response);
     }
 
     // Всички трансакции на потребител
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionTransferResponse>> getByUser(@RequestParam UUID userId) {
+    public ResponseEntity<List<TransactionTransferResponse>> getByUser(@PathVariable UUID userId) {
         List<TransactionTransferResponse> transactions = transactionService.getAllTransactionsByUserId(userId);
         return ResponseEntity.ok(transactions);
     }

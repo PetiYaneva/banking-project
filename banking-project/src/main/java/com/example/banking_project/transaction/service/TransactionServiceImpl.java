@@ -2,25 +2,29 @@ package com.example.banking_project.transaction.service;
 
 import com.example.banking_project.account.model.Account;
 import com.example.banking_project.account.service.AccountBalanceService;
-import com.example.banking_project.account.service.AccountService;
+import com.example.banking_project.transaction.mapper.TransactionMapper;
 import com.example.banking_project.transaction.model.Transaction;
 import com.example.banking_project.transaction.model.TransactionStatus;
 import com.example.banking_project.transaction.model.TransactionType;
 import com.example.banking_project.transaction.repository.TransactionRepository;
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.user.service.UserService;
-import com.example.banking_project.web.dto.*;
+import com.example.banking_project.web.dto.ExpenseRequest;
+import com.example.banking_project.web.dto.IncomeRequest;
+import com.example.banking_project.web.dto.TransactionRequest;
+import com.example.banking_project.web.dto.TransactionResponse;
+import com.example.banking_project.web.dto.TransactionTransferRequest;
+import com.example.banking_project.web.dto.TransactionTransferResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-@Service
 @RequiredArgsConstructor
+@Service
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -28,10 +32,11 @@ public class TransactionServiceImpl implements TransactionService {
     private final IncomeService incomeService;
     private final ExpenseService expenseService;
     private final AccountBalanceService accountBalanceService;
+    private final TransactionMapper mapper;
 
     @Override
     public TransactionTransferResponse createTransactionTransfer(TransactionTransferRequest request) {
-      User user = userService.findUserById(request.getUserId());
+        User user = userService.findUserById(request.getUserId());
 
         Transaction transaction = Transaction.builder()
                 .amount(request.getAmount())
@@ -59,19 +64,7 @@ public class TransactionServiceImpl implements TransactionService {
                     .build());
         }
 
-        return TransactionTransferResponse.builder()
-                .id(transaction.getId())
-                .amount(transaction.getAmount())
-                .currency(transaction.getCurrency())
-                .transactionStatus(transaction.getTransactionStatus().toString())
-                .transactionType(transaction.getTransactionType().toString())
-                .description(transaction.getDescription())
-                .accountId(transaction.getAccount().getId())
-                .userId(transaction.getUser().getId())
-                .isExpense(transaction.getIsExpense())
-                .isIncome(transaction.getIsIncome())
-                .createdOn(transaction.getCreatedOn())
-                .build();
+        return mapper.fromEntity(transaction);
     }
 
     @Override
@@ -79,7 +72,6 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = accountBalanceService.getAccountByIban(request.getIban());
         User user = userService.findUserById(request.getUserId());
 
-        // Обновяване на баланса според типа
         accountBalanceService.updateBalance(
                 request.getIban(),
                 request.getAmount(),
@@ -127,88 +119,71 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
-
-    //Помисли дали ти трябва!!
-    @Override
-    public List<TransactionTransferResponse> getAllTransactions() {
-        return null;
-    }
-
     @Override
     public TransactionTransferResponse getTransactionById(UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
-
-        return TransactionTransferResponse.builder()
-                .id(transaction.getId())
-                .amount(transaction.getAmount())
-                .transactionStatus(transaction.getTransactionStatus().toString())
-                .transactionType(transaction.getTransactionType().toString())
-                .description(transaction.getDescription())
-                .failureReason(transaction.getFailureReason() != null ? transaction.getFailureReason() : "")
-                .createdOn(transaction.getCreatedOn())
-                .currency(transaction.getCurrency())
-                .isIncome(transaction.getIsIncome())
-                .isExpense(transaction.getIsExpense())
-                .accountId(transaction.getAccount().getId())
-                .userId(transaction.getUser().getId())
-                .build();
+        return mapper.fromEntity(transaction);
     }
 
     @Override
     public List<TransactionTransferResponse> getAllIncomesByUser(UUID userId) {
-        return transactionRepository.getAllIncomesByUserId(userId);
+        return transactionRepository.getAllIncomesByUserId(userId).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getAllExpensesByUser(UUID userId) {
-        return transactionRepository.getAllExpensesByUserId(userId);
+        return transactionRepository.getAllExpensesByUserId(userId).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getTransactionsByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.getTransactionsByUserAndPeriod(userId, startDate, endDate);
+        return transactionRepository.getTransactionsByUserAndPeriod(userId, startDate, endDate).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getIncomesByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.getIncomesByUserAndPeriod(userId, startDate, endDate);
+        return transactionRepository.getIncomesByUserAndPeriod(userId, startDate, endDate).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getExpensesByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.getExpensesByUserAndPeriod(userId, startDate, endDate);
+        return transactionRepository.getExpensesByUserAndPeriod(userId, startDate, endDate).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getTransactionsByAccount(UUID accountId) {
-        return transactionRepository.getTransactionsByAccount(accountId);
+        return transactionRepository.getTransactionsByAccount(accountId).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getTransactionsByType(UUID userId, TransactionType type) {
-        return transactionRepository.findByUserIdAndType(userId, type.toString());
+        return transactionRepository.findByUserIdAndType(userId, type.toString()).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
     @Override
     public List<TransactionTransferResponse> getAllTransactionsByUserId(UUID userId) {
-        return transactionRepository.getAllTransactionsByUserId(userId);
+        return transactionRepository.getAllTransactionsByUserId(userId).stream()
+                .map(mapper::fromView)
+                .toList();
     }
 
-    private TransactionTransferResponse mapToResponse(Transaction t) {
-        return TransactionTransferResponse.builder()
-                .id(t.getId())
-                .amount(t.getAmount())
-                .currency(t.getCurrency())
-                .transactionStatus(t.getTransactionStatus().toString())
-                .transactionType(t.getTransactionType().toString())
-                .description(t.getDescription())
-                .failureReason(t.getFailureReason())
-                .createdOn(t.getCreatedOn())
-                .accountId(t.getAccount().getId())
-                .userId(t.getUser().getId())
-                .isIncome(t.getIsIncome())
-                .isExpense(t.getIsExpense())
-                .build();
+    @Override
+    public List<TransactionTransferResponse> getAllTransactions() {
+        return null;
     }
 }
