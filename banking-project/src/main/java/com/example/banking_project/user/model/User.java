@@ -4,6 +4,7 @@ import com.example.banking_project.account.model.Account;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +56,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "employment")
     private Employment employment;
+
+    @Column(name = "declared_income")
+    private BigDecimal declaredIncome;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Account> accounts;

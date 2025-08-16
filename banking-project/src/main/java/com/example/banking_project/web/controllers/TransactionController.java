@@ -1,6 +1,8 @@
 package com.example.banking_project.web.controllers;
 
 import com.example.banking_project.transaction.model.TransactionType;
+import com.example.banking_project.transaction.service.ExpenseService;
+import com.example.banking_project.transaction.service.IncomeService;
 import com.example.banking_project.transaction.service.TransactionService;
 import com.example.banking_project.web.dto.TransactionRequest;
 import com.example.banking_project.web.dto.TransactionResponse;
@@ -8,8 +10,10 @@ import com.example.banking_project.web.dto.TransactionTransferResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +24,8 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final IncomeService incomeService;
+    private final ExpenseService expenseService;
 
     // Създаване на трансакция
     @PostMapping("/new")
@@ -58,5 +64,24 @@ public class TransactionController {
         List<TransactionTransferResponse> transactions = transactionService.getTransactionsByUserAndPeriod(userId, startDate, endDate);
         return ResponseEntity.ok(transactions);
     }
+
+    @GetMapping("/income/summary")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<BigDecimal> getIncomeSummary(
+            @RequestParam UUID userId,
+            @RequestParam(defaultValue = "6") int monthsBack) {
+        BigDecimal income = incomeService.getIncomeForLastMonths(userId, monthsBack);
+        return ResponseEntity.ok(income);
+    }
+
+    @GetMapping("/expense/summary")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<BigDecimal> getExpenseSummary(
+            @RequestParam UUID userId,
+            @RequestParam(defaultValue = "6") int monthsBack) {
+        BigDecimal expense = expenseService.getExpensesForLastMonths(userId, monthsBack);
+        return ResponseEntity.ok(expense);
+    }
+
 }
 
