@@ -2,7 +2,7 @@ package com.example.banking_project.transaction.mapper;
 
 import com.example.banking_project.transaction.model.Transaction;
 import com.example.banking_project.web.dto.TransactionTransferResponse;
-import com.example.banking_project.web.dto.TransactionTransferView;
+import com.example.banking_project.transaction.view.TransactionTransferView;
 import org.springframework.stereotype.Component;
 
 import java.util.Currency;

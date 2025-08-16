@@ -1,4 +1,4 @@
-package com.example.banking_project.web.dto;
+package com.example.banking_project.transaction.view;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

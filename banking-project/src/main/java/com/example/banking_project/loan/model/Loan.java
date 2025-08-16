@@ -39,6 +39,9 @@ public class Loan {
     @Column(name = "interest_rate", nullable = false)
     private BigDecimal interestRate;  // Лихвен процент
 
+    @Column(name = "missed_payments")
+    private int missedPayments;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "loan_status", nullable = false)
     private LoanStatus loanStatus;  // Статус на кредита

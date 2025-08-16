@@ -8,10 +8,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class IncomeServiceImpl implements IncomeService{
+public class IncomeServiceImpl implements IncomeService {
+
     private final IncomeRepository incomeRepository;
 
     @Override
@@ -22,5 +27,10 @@ public class IncomeServiceImpl implements IncomeService{
                 .build());
         log.info("Saving expense: {} for transaction: {}", income.getId(), request.getTransaction().getId());
 
+    }
+    @Override
+    public BigDecimal getIncomeForLastMonths(UUID userId, int monthsBack) {
+        LocalDate startDate = LocalDate.now().minusMonths(monthsBack);
+        return incomeRepository.getIncomeForLastMonths(userId, startDate);
     }
 }
