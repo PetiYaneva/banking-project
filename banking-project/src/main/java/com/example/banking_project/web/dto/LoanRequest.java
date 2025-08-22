@@ -16,12 +16,13 @@ public class LoanRequest {
     private BigDecimal totalAmount;
     private BigDecimal interestRate;
     private LocalDate finalDate;
+    private int termMonths;
 
-    // Допълнителни полета за оценка на риска:
     private BigDecimal monthlyIncome;
-    private BigDecimal monthlyObligations; // За DTI
+    private BigDecimal monthlyObligations;
     private int employmentYears;
     private String employmentType;
     private String creditHistory;
     private String collateral;
 }
+

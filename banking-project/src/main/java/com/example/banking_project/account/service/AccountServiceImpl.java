@@ -1,6 +1,7 @@
 package com.example.banking_project.account.service;
 
 import com.example.banking_project.account.model.Account;
+import com.example.banking_project.account.model.AccountType;
 import com.example.banking_project.account.repository.AccountRepository;
 import com.example.banking_project.account.validation.AccountValidationService;
 import com.example.banking_project.transaction.model.TransactionType;
@@ -135,6 +136,30 @@ public class AccountServiceImpl implements AccountService{
         return accounts.stream()
                 .map(Account::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Override
+    public void createCreditAccount(LoanRequest request, UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required to create a credit account.");
+        }
+        BigDecimal principal = request != null && request.getTotalAmount() != null
+                ? request.getTotalAmount()
+                : BigDecimal.ZERO;
+
+        String iban = createIban();
+        while (accountRepository.existsByIban(iban)) {
+            iban = createIban();
+        }
+
+        Account creditAccount = Account.builder()
+                .iban(iban)
+                .accountType(AccountType.CREDIT)
+                .balance(principal)
+                .user(User.builder().id(userId).build())
+                .build();
+
+        accountRepository.save(creditAccount);
     }
 
     private String createIban() {

@@ -2,6 +2,7 @@ package com.example.banking_project.account.service;
 
 import com.example.banking_project.account.model.Account;
 import com.example.banking_project.web.dto.CreateAccountRequest;
+import com.example.banking_project.web.dto.LoanRequest;
 import com.example.banking_project.web.dto.TransferRequest;
 import com.example.banking_project.web.dto.TransferResponse;
 
@@ -24,4 +25,6 @@ public interface AccountService {
     // Допълнително:
     List<Account> getAccountsByUserId(UUID userId);
     BigDecimal getTotalBalanceForUser(UUID userId);
+
+     void createCreditAccount(LoanRequest request, UUID userId);
 }

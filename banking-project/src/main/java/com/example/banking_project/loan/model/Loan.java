@@ -42,6 +42,12 @@ public class Loan {
     @Column(name = "missed_payments")
     private int missedPayments;
 
+    @Column(name = "monthly_payment", nullable = false, precision = 19, scale = 2)
+    private BigDecimal monthlyPayment;
+
+    @Column(name = "term_months", nullable = false)
+    private int termMonths;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "loan_status", nullable = false)
     private LoanStatus loanStatus;  // Статус на кредита

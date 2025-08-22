@@ -1,18 +1,25 @@
 package com.example.banking_project.loan.service;
 
+import com.example.banking_project.account.service.AccountService;
+import com.example.banking_project.loan.model.Loan;
+import com.example.banking_project.loan.model.LoanStatus;
 import com.example.banking_project.loan.repository.LoanRepository;
+import com.example.banking_project.loan.validation.LoanValidationService;
 import com.example.banking_project.loan.view.CreditHistoryView;
-import com.example.banking_project.transaction.service.ExpenseService;
-import com.example.banking_project.transaction.service.IncomeService;
+import com.example.banking_project.user.model.User;
+import com.example.banking_project.user.service.UserService;
+import com.example.banking_project.web.dto.LoanApplicationResponse;
 import com.example.banking_project.web.dto.LoanRequest;
 import com.example.banking_project.web.dto.LoanRiskReportData;
 import com.example.banking_project.web.dto.LoanRiskResult;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Slf4j
@@ -21,118 +28,105 @@ import java.util.UUID;
 public class LoanServiceImpl implements LoanService {
 
     private final LoanRepository loanRepository;
-    private final IncomeService incomeService;
-    private final ExpenseService expenseService;
     private final LoanRiskReportService riskReportService;
+    private final LoanRiskEngine loanRiskEngine;
+    private final AccountService accountService;
+    private final UserService userService;
+    private final LoanValidationService loanValidationService;
+
+    private Loan createApprovedLoanRecord(LoanRequest request) {
+        UUID userId = request.getUserId();
+        User user = userService.findUserById(userId);
+
+        BigDecimal totalAmount = nvl(request.getTotalAmount());
+        int months = request.getTermMonths();
+        BigDecimal annualRate = nvl(request.getInterestRate());
+
+        BigDecimal monthlyRate = annualRate.divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
+        BigDecimal monthlyPayment = computeAnnuity(totalAmount, monthlyRate, months);
+
+        LocalDate applyDate = LocalDate.now();
+        LocalDate finalDate = request.getFinalDate() != null ? request.getFinalDate() : applyDate.plusMonths(months);
+        LocalDate nextPayment = applyDate.plusMonths(1);
+
+        Loan loan = new Loan();
+        loan.setDateOfApplying(applyDate);
+        loan.setFinalDate(finalDate);
+        loan.setNextDateOfPayment(nextPayment);
+        loan.setTotalAmount(totalAmount);
+        loan.setRemainingAmount(totalAmount);
+        loan.setInterestRate(annualRate);
+        loan.setMonthlyPayment(monthlyPayment);
+        loan.setTermMonths(months);
+        loan.setMissedPayments(0);
+        loan.setLoanStatus(LoanStatus.ACTIVE);
+        loan.setUser(user);
+
+        Loan saved = loanRepository.save(loan);
+        log.info("Created approved loan for user {} with monthlyPayment={} and term={} months",
+                userId, monthlyPayment, months);
+
+        accountService.createCreditAccount(request, userId);
+
+        return saved;
+    }
+
+
+    private static BigDecimal computeAnnuity(BigDecimal principal, BigDecimal monthlyRate, int months) {
+        if (months <= 0) throw new IllegalArgumentException("Months must be > 0");
+        if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
+            return principal.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
+        }
+        // M = P * r / (1 - (1 + r)^-n)
+        double r = monthlyRate.doubleValue();
+        double p = principal.doubleValue();
+        double pow = Math.pow(1.0 + r, -months);
+        double m = p * r / (1.0 - pow);
+        return BigDecimal.valueOf(m).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal nvl(BigDecimal x) {
+        return x == null ? BigDecimal.ZERO : x;
+    }
 
     @Override
     public LoanRiskResult assessLoanRisk(LoanRequest request) {
-        int score = 0;
+        return loanRiskEngine.assess(request);
+    }
 
-        String creditHistory = creditHistoryEvaluation(request.getUserId());
-        if ("good".equalsIgnoreCase(creditHistory)) {
-            score += 20;
-        } else if ("neutral".equalsIgnoreCase(creditHistory)) {
-            score += 10;
+    @Transactional
+    @Override
+    public LoanApplicationResponse applyForLoan(LoanRequest request) {
+        LoanRiskResult eval = loanRiskEngine.assess(request);
+
+        // Одобряваме само при Low Risk (смени логиката, ако искаш и Medium)
+        boolean approved = "Low Risk".equalsIgnoreCase(eval.getRiskClass());
+        if (!approved) {
+            return LoanApplicationResponse.builder()
+                    .approved(false)
+                    .riskClass(eval.getRiskClass())
+                    .recommendation(eval.getRecommendation())
+                    .build();
         }
 
-        BigDecimal declaredIncome = request.getMonthlyIncome();
-        if (declaredIncome.compareTo(new BigDecimal("5000")) > 0) {
-            score += 20;
-        } else if (declaredIncome.compareTo(new BigDecimal("3000")) >= 0) {
-            score += 15;
-        } else if (declaredIncome.compareTo(new BigDecimal("1500")) >= 0) {
-            score += 10;
-        } else {
-            score += 5;
-        }
+        loanValidationService.validateLoanRequest(request);
+        Loan loan = createApprovedLoanRecord(request); // връща Loan
 
-        // Реални стойности за последните 6 месеца
-        BigDecimal realIncome = incomeService.getIncomeForLastMonths(request.getUserId(), 6);
-        BigDecimal totalExpenses = expenseService.getExpensesForLastMonths(request.getUserId(), 6);
-
-        if (realIncome.compareTo(BigDecimal.ZERO) == 0) {
-            log.warn("User {} has no recorded income in the last 6 months.", request.getUserId());
-            score -= 20;
-        }
-
-        BigDecimal averageNetIncome = realIncome.subtract(totalExpenses)
-                .divide(BigDecimal.valueOf(6), 2, RoundingMode.HALF_UP);
-
-        // DTI – реални разходи спрямо деклариран доход
-        BigDecimal dti = request.getMonthlyObligations()
-                .divide(declaredIncome, 2, RoundingMode.HALF_UP);
-
-        if (dti.compareTo(new BigDecimal("0.3")) < 0) {
-            score += 20;
-        } else if (dti.compareTo(new BigDecimal("0.5")) <= 0) {
-            score += 10;
-        }
-
-        // Employment duration
-        if (request.getEmploymentYears() > 3) {
-            score += 15;
-        } else if (request.getEmploymentYears() >= 1) {
-            score += 10;
-        } else {
-            score += 5;
-        }
-
-        // Employment type
-        if ("permanent".equalsIgnoreCase(request.getEmploymentType())) {
-            score += 10;
-        } else if ("temporary".equalsIgnoreCase(request.getEmploymentType())) {
-            score += 5;
-        }
-
-        // Collateral
-        if ("property".equalsIgnoreCase(request.getCollateral())) {
-            score += 10;
-        } else if ("guarantor".equalsIgnoreCase(request.getCollateral())) {
-            score += 5;
-        }
-
-        // Проверка за реални приходи
-        if (averageNetIncome.compareTo(BigDecimal.ZERO) <= 0) {
-            score -= 15;
-            log.warn("User {} has zero or negative net income.", request.getUserId());
-        } else if (averageNetIncome.compareTo(declaredIncome.multiply(BigDecimal.valueOf(0.5))) < 0) {
-            score -= 10;
-            log.warn("User {} has low real net income compared to declared.", request.getUserId());
-        }
-
-        String riskClass, recommendation;
-        if (score >= 75) {
-            riskClass = "Low Risk";
-            recommendation = "Approved under standard conditions";
-        } else if (score >= 50) {
-            riskClass = "Medium Risk";
-            recommendation = "Approved with additional conditions";
-        } else {
-            riskClass = "High Risk";
-            recommendation = "Rejected or requires collateral";
-        }
-
-        return new LoanRiskResult(
-                score,
-                riskClass,
-                recommendation,
-                averageNetIncome,
-                declaredIncome,
-                realIncome.divide(BigDecimal.valueOf(6), 2, RoundingMode.HALF_UP), // avg income
-                totalExpenses,
-                dti
-        );
+        return LoanApplicationResponse.builder()
+                .approved(true)
+                .riskClass(eval.getRiskClass())
+                .recommendation(eval.getRecommendation())
+                .loanId(loan.getId())
+                .monthlyPayment(loan.getMonthlyPayment())
+                .build();
     }
 
     @Override
     public String creditHistoryEvaluation(UUID userId) {
         CreditHistoryView view = loanRepository.getCreditHistoryByUserId(userId);
-
         if (view == null) {
             return "neutral";
         }
-
         return view.getCreditStatus();
     }
 

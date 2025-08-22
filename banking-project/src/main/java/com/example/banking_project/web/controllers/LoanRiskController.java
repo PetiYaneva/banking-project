@@ -1,8 +1,11 @@
 package com.example.banking_project.web.controllers;
 
 import com.example.banking_project.loan.service.LoanService;
+import com.example.banking_project.web.dto.LoanApplicationResponse;
 import com.example.banking_project.web.dto.LoanRequest;
 import com.example.banking_project.web.dto.LoanRiskResult;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -10,24 +13,39 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/loans")
+@RequiredArgsConstructor
 public class LoanRiskController {
 
     private final LoanService loanService;
 
-    public LoanRiskController(LoanService loanService) {
-        this.loanService = loanService;
-    }
-
-    // 👥 USER & ADMIN
-    @PostMapping("/risk-assessment")
+    // 1) Само оценка
+    @PostMapping(value = "/risk-assessment",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public ResponseEntity<LoanRiskResult> assessRisk(@RequestBody LoanRequest request) {
+    public ResponseEntity<LoanRiskResult> assessRisk(@Valid @RequestBody LoanRequest request) {
         LoanRiskResult result = loanService.assessLoanRisk(request);
         return ResponseEntity.ok(result);
+    }
+
+    // 2) Кандидатстване
+    @PostMapping(value = "/apply",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<LoanApplicationResponse> apply(@Valid @RequestBody LoanRequest request) {
+        LoanApplicationResponse resp = loanService.applyForLoan(request);
+        if (resp.isApproved() && resp.getLoanId() != null) {
+            return ResponseEntity
+                    .created(URI.create("/api/loans/" + resp.getLoanId()))
+                    .body(resp);
+        }
+        return ResponseEntity.ok(resp);
     }
 
     // 👑 ADMIN only
