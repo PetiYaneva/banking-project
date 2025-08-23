@@ -10,10 +10,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Builder
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Setter
+@AllArgsConstructor @NoArgsConstructor
 @Entity
 @Table(name = "users")
 public class User {
@@ -22,10 +20,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "first_name", nullable = false)
+    @Column(name = "first_name")
     private String firstName;
 
-    @Column(name = "last_name", nullable = false)
+    @Column(name = "last_name")
     private String lastName;
 
     @Column(name = "email", unique = true, nullable = false)
@@ -38,10 +36,10 @@ public class User {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "created_on",nullable = false)
+    @Column(name = "created_on", nullable = false)
     private LocalDate createdOn;
 
-    @Column(name = "updated_on",nullable = false)
+    @Column(name = "updated_on", nullable = false)
     private LocalDate updatedOn;
 
     @Column(name = "date_of_birth")
@@ -62,4 +60,21 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Account> accounts;
+
+    // Ново: флаг за двуфазен онбординг
+    @Column(name = "profile_completed", nullable = false)
+    private boolean profileCompleted;
+
+    @PrePersist
+    public void prePersist() {
+        LocalDate now = LocalDate.now();
+        this.createdOn = now;
+        this.updatedOn = now;
+        if (role == null) role = UserRole.USER;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedOn = LocalDate.now();
+    }
 }

@@ -1,9 +1,11 @@
 package com.example.banking_project.loan.validation;
 
 import com.example.banking_project.web.dto.LoanRequest;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+@Service
 public class LoanValidationServiceImpl implements LoanValidationService{
     @Override
     public void validateLoanRequest(LoanRequest request) {
