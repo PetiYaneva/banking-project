@@ -1,5 +1,5 @@
 package com.example.banking_project.web.controllers;
-import com.example.banking_project.cryptocurrency.CryptoService;
+import com.example.banking_project.cryptocurrency.service.CryptoService;
 import com.example.banking_project.web.dto.crypto.CryptoHistoryDto;
 import com.example.banking_project.web.dto.crypto.CryptoPriceDto;
 import jakarta.validation.constraints.NotBlank;

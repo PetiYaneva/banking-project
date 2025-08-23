@@ -17,7 +17,7 @@ public class LoanRequest {
     private BigDecimal interestRate;
     private LocalDate finalDate;
     private int termMonths;
-
+    private UUID repaymentAccountId;
     private BigDecimal monthlyIncome;
     private BigDecimal monthlyObligations;
     private int employmentYears;

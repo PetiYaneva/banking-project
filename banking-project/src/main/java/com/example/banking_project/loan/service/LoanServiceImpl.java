@@ -1,5 +1,6 @@
 package com.example.banking_project.loan.service;
 
+import com.example.banking_project.account.model.Account;
 import com.example.banking_project.account.service.AccountService;
 import com.example.banking_project.loan.model.Loan;
 import com.example.banking_project.loan.model.LoanStatus;
@@ -61,6 +62,8 @@ public class LoanServiceImpl implements LoanService {
         loan.setMissedPayments(0);
         loan.setLoanStatus(LoanStatus.ACTIVE);
         loan.setUser(user);
+        Account repayment = accountService.getAccountById(request.getRepaymentAccountId());
+        loan.setRepaymentAccount(repayment);
 
         Loan saved = loanRepository.save(loan);
         log.info("Created approved loan for user {} with monthlyPayment={} and term={} months",

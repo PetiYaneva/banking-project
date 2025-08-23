@@ -1,5 +1,5 @@
 package com.example.banking_project.web.controllers;
-import com.example.banking_project.cryptocurrency.LivePriceService;
+import com.example.banking_project.cryptocurrency.service.LivePriceService;
 import com.example.banking_project.web.dto.crypto.Ticker;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;

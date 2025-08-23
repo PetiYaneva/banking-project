@@ -1,4 +1,4 @@
-package com.example.banking_project.cryptocurrency;
+package com.example.banking_project.cryptocurrency.service;
 
 import com.example.banking_project.cryptocurrency.configuration.MarketDataClient;
 import com.example.banking_project.web.dto.crypto.CryptoHistoryDto;

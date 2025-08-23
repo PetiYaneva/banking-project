@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AccountService {
+    Account debitByIban(String iban, BigDecimal amount);
+
+    Account creditByIban(String iban, BigDecimal amount);
+
     Account create(CreateAccountRequest request, UUID userId);
     List<Account> getAllAccounts();
 

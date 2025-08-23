@@ -10,5 +10,6 @@ import java.math.BigDecimal;
 @Setter
 public class CreateAccountRequest {
     private AccountType accountType;
+    private String currencyCode;
     private BigDecimal initialBalance;
 }
