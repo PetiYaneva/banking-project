@@ -1,8 +1,8 @@
 package com.example.banking_project.security;
 
-import com.example.banking_project.account.model.Account;
 import com.example.banking_project.user.model.User;
-import com.example.banking_project.user.service.UserService;
+import com.example.banking_project.user.model.UserRole;
+import com.example.banking_project.user.repository.UserRepository;
 import com.example.banking_project.user.validation.UserValidationService;
 import com.example.banking_project.web.dto.AuthenticationRequest;
 import com.example.banking_project.web.dto.AuthenticationResponse;
@@ -10,79 +10,60 @@ import com.example.banking_project.web.dto.RegisterRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
-    private final UserService userService;
+
+    private final UserRepository userRepository;
+    private final UserValidationService userValidationService;
+    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final UserValidationService userValidationService;
 
+    public AuthenticationResponse register(RegisterRequest request) {
+        userValidationService.validateUserRegister(request);
 
-    public AuthenticationResponse register(RegisterRequest registerRequest) {
-        User user = userService.register(registerRequest);
-
-        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                List.of(new SimpleGrantedAuthority(user.getRole().name()))
-        );
-
-        var jwt = jwtService.generateToken(buildClaims(Optional.of(user)), userDetails);
-
-        return AuthenticationResponse.builder()
-                .token(jwt)
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(UserRole.USER)
+                .profileCompleted(false)
                 .build();
+
+        userRepository.save(user);
+
+        UserDetails principal = UserDetailsImpl.build(user);
+        String token = jwtService.generateToken(buildClaims(user), principal);
+
+        return AuthenticationResponse.builder().token(token).build();
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest authenticationRequest) {
-        userValidationService.validateUserLogin(authenticationRequest);
-
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        authenticationRequest.getEmail(),
-                        authenticationRequest.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        Optional<User> user = userService.getUserByEmail(authenticationRequest.getEmail());
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.get().getEmail(),
-                user.get().getPassword(),
-                List.of(new SimpleGrantedAuthority(user.get().getRole().name()))
-        );
+        UserDetails principal = UserDetailsImpl.build(user);
+        String token = jwtService.generateToken(buildClaims(user), principal);
 
-        var jwtToken = jwtService.generateToken(buildClaims(user), userDetails);
-
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .build();
+        return AuthenticationResponse.builder().token(token).build();
     }
 
-    private Map<String, Object> buildClaims(Optional<User> user) {
+    private Map<String, Object> buildClaims(User user) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.get().getId().toString());
-        claims.put("role", user.get().getRole().name());
-
-        List<Account> accounts = user.get().getAccounts();
-        if (accounts != null && !accounts.isEmpty()) {
-            List<String> ibans = accounts.stream()
-                    .map(Account::getIban)
-                    .toList();
-            claims.put("ibans", ibans); // добавя масив от IBAN-и
-        }
-
+        claims.put("userId", user.getId().toString());
+        claims.put("role", user.getRole().name());
+        claims.put("profileCompleted", user.isProfileCompleted());
         return claims;
     }
-
 }

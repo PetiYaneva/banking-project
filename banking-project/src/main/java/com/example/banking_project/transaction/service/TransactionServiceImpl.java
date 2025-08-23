@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -185,5 +186,60 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionTransferResponse> getAllTransactions() {
         return null;
+    }
+
+    @Override
+    public void recordExpense(UUID userId, String iban, BigDecimal amount, String description) {
+        // дебит на акаунта + транзакция тип WITHDRAWAL (или TRANSFER с isExpense=true)
+        var account = accountBalanceService.getAccountByIban(iban);
+
+        accountBalanceService.updateBalance(iban, amount, TransactionType.WITHDRAWAL);
+
+        Transaction tx = Transaction.builder()
+                .amount(amount)
+                .createdOn(LocalDate.now())
+                .currency(java.util.Currency.getInstance(
+                        account.getCurrencyCode() != null ? account.getCurrencyCode() : "BGN"))
+                .description(description)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .account(account)
+                .user(userService.findUserById(userId))
+                .isExpense(true)
+                .isIncome(false)
+                .transactionType(TransactionType.WITHDRAWAL)
+                .build();
+
+        transactionRepository.save(tx);
+        expenseService.createExpense(ExpenseRequest.builder()
+                .amount(tx.getAmount())
+                .transaction(tx)
+                .build());
+    }
+
+    @Override
+    public void recordIncome(UUID userId, String iban, BigDecimal amount, String description) {
+        var account = accountBalanceService.getAccountByIban(iban);
+
+        accountBalanceService.updateBalance(iban, amount, TransactionType.DEPOSIT);
+
+        Transaction tx = Transaction.builder()
+                .amount(amount)
+                .createdOn(LocalDate.now())
+                .currency(java.util.Currency.getInstance(
+                        account.getCurrencyCode() != null ? account.getCurrencyCode() : "BGN"))
+                .description(description)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .account(account)
+                .user(userService.findUserById(userId))
+                .isExpense(false)
+                .isIncome(true)
+                .transactionType(TransactionType.DEPOSIT)
+                .build();
+
+        transactionRepository.save(tx);
+        incomeService.createIncome(IncomeRequest.builder()
+                .amount(tx.getAmount())
+                .transaction(tx)
+                .build());
     }
 }

@@ -38,7 +38,7 @@ public class LoanRiskReportService {
     private final ExpenseService expenseService;
     private final UserService userService;
     private final LoanRepository loanRepository;
-    private final LoanService loanService;
+    private final LoanRiskEngine loanRiskEngine;
 
     public byte[] generatePdf(LoanRiskReportData data) throws IOException, DocumentException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -93,7 +93,6 @@ public class LoanRiskReportService {
         values.put("Risk Class", data.getRiskClass());
         values.put("Recommendation", data.getRecommendation());
 
-
         int rowIdx = 0;
         for (Map.Entry<String, Object> entry : values.entrySet()) {
             Row row = sheet.createRow(rowIdx++);
@@ -108,15 +107,10 @@ public class LoanRiskReportService {
     }
 
     public LoanRiskReportData prepareData(UUID userId) {
-        BigDecimal declaredIncome = userService.findUserById(userId).getDeclaredIncome();
-        BigDecimal monthlyIncome = incomeService.getIncomeForLastMonths(userId, 6);
-        BigDecimal monthlyExpenses = expenseService.getExpensesForLastMonths(userId, 6);
-        BigDecimal obligations = loanRepository.getMonthlyObligations(userId);
-
-        if (monthlyIncome == null) monthlyIncome = BigDecimal.ZERO;
-        if (monthlyExpenses == null) monthlyExpenses = BigDecimal.ZERO;
-        if (obligations == null) obligations = BigDecimal.ZERO;
-        if (declaredIncome == null) declaredIncome = BigDecimal.ZERO;
+        BigDecimal declaredIncome = nvl(userService.findUserById(userId).getDeclaredIncome());
+        BigDecimal monthlyIncome = nvl(incomeService.getIncomeForLastMonths(userId, 6));
+        BigDecimal monthlyExpenses = nvl(expenseService.getExpensesForLastMonths(userId, 6));
+        BigDecimal obligations = nvl(loanRepository.getMonthlyObligations(userId));
 
         BigDecimal dti = BigDecimal.ZERO;
         if (declaredIncome.compareTo(BigDecimal.ZERO) > 0) {
@@ -124,9 +118,9 @@ public class LoanRiskReportService {
         }
 
         BigDecimal availableIncome = monthlyIncome.subtract(monthlyExpenses);
-
         String creditHistory = creditHistoryEvaluation(userId);
 
+        // Оценката минава през LoanRiskEngine – НЕ през LoanService
         LoanRequest request = LoanRequest.builder()
                 .userId(userId)
                 .creditHistory(creditHistory)
@@ -138,7 +132,7 @@ public class LoanRiskReportService {
                 .totalAmount(BigDecimal.ZERO)
                 .build();
 
-        LoanRiskResult result = loanService.assessLoanRisk(request);
+        LoanRiskResult result = loanRiskEngine.assess(request);
 
         return LoanRiskReportData.builder()
                 .userId(userId)
@@ -159,5 +153,9 @@ public class LoanRiskReportService {
     private String creditHistoryEvaluation(UUID userId) {
         CreditHistoryView view = loanRepository.getCreditHistoryByUserId(userId);
         return (view == null || view.getCreditStatus() == null) ? "neutral" : view.getCreditStatus();
+    }
+
+    private static BigDecimal nvl(BigDecimal x) {
+        return x == null ? BigDecimal.ZERO : x;
     }
 }

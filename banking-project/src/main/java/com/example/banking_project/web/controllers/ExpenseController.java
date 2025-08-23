@@ -5,6 +5,7 @@ import com.example.banking_project.web.dto.TransactionTransferResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -18,21 +19,25 @@ public class ExpenseController {
 
     private final TransactionService transactionService;
 
-    // Всички разходи за потребител
+    @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionTransferResponse>> getExpensesByUser(@RequestParam UUID userId) {
+    public ResponseEntity<List<TransactionTransferResponse>> getExpensesByUser(@PathVariable UUID userId) {
         List<TransactionTransferResponse> expenses = transactionService.getAllExpensesByUser(userId);
         return ResponseEntity.ok(expenses);
     }
 
-    // Разходи за потребител за определен период
+    @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping("/user/{userId}/period")
     public ResponseEntity<List<TransactionTransferResponse>> getExpensesByUserAndPeriod(
-            @RequestParam UUID userId,
+            @PathVariable UUID userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        List<TransactionTransferResponse> expenses = transactionService.getExpensesByUserAndPeriod(userId, startDate, endDate);
+        if (startDate.isAfter(endDate)) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<TransactionTransferResponse> expenses =
+                transactionService.getExpensesByUserAndPeriod(userId, startDate, endDate);
         return ResponseEntity.ok(expenses);
     }
 }

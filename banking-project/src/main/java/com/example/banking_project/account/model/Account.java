@@ -28,12 +28,21 @@ public class Account {
     @Column(name = "account_type", nullable = false)
     private AccountType accountType;
 
-    @Column(name = "iban")
+    @Column(name = "iban", unique = true)
     private String iban;
+
+    @Column(name = "currency_code", length = 3)
+    private String currencyCode;
+
+    @Column(name = "crypto_enabled", nullable = false)
+    private Boolean cryptoEnabled = Boolean.TRUE;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
-
 }

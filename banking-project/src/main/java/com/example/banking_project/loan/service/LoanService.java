@@ -1,5 +1,6 @@
 package com.example.banking_project.loan.service;
 
+import com.example.banking_project.web.dto.LoanApplicationResponse;
 import com.example.banking_project.web.dto.LoanRequest;
 import com.example.banking_project.web.dto.LoanRiskReportData;
 import com.example.banking_project.web.dto.LoanRiskResult;
@@ -12,6 +13,8 @@ import java.util.UUID;
 public interface LoanService {
 
     LoanRiskResult assessLoanRisk(LoanRequest request);
+
+    LoanApplicationResponse applyForLoan(LoanRequest request);
 
     String creditHistoryEvaluation(UUID userId);
 
