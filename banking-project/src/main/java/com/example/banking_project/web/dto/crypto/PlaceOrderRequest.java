@@ -12,5 +12,10 @@ public record PlaceOrderRequest(
         String asset,
         OrderSide side,
         BigDecimal quantity
-) {}
+) {
+    // helper за да присадим userId от JWT в контролера
+    public PlaceOrderRequest withUserId(UUID newUserId) {
+        return new PlaceOrderRequest(newUserId, this.iban, this.asset, this.side, this.quantity);
+    }
+}
 

@@ -27,28 +27,28 @@ public class TransactionController {
     private final IncomeService incomeService;
     private final ExpenseService expenseService;
 
-    // Създаване на трансакция
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @PostMapping("/new")
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody TransactionRequest request) {
         TransactionResponse response = transactionService.createTransaction(request);
         return ResponseEntity.ok(response);
     }
 
-    // Трансакция по ID
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/{id}")
     public ResponseEntity<TransactionTransferResponse> getById(@PathVariable UUID id) {
         TransactionTransferResponse response = transactionService.getTransactionById(id);
         return ResponseEntity.ok(response);
     }
 
-    // Всички трансакции на потребител
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<TransactionTransferResponse>> getByUser(@PathVariable UUID userId) {
         List<TransactionTransferResponse> transactions = transactionService.getAllTransactionsByUserId(userId);
         return ResponseEntity.ok(transactions);
     }
 
-    // По тип трансакция
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/type")
     public ResponseEntity<List<TransactionTransferResponse>> getByType(@RequestParam UUID userId,
                                                                        @RequestParam TransactionType type) {
@@ -56,17 +56,18 @@ public class TransactionController {
         return ResponseEntity.ok(transactions);
     }
 
-    // По период от време
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/period")
     public ResponseEntity<List<TransactionTransferResponse>> getByUserAndPeriod(@RequestParam UUID userId,
                                                                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<TransactionTransferResponse> transactions = transactionService.getTransactionsByUserAndPeriod(userId, startDate, endDate);
+        List<TransactionTransferResponse> transactions =
+                transactionService.getTransactionsByUserAndPeriod(userId, startDate, endDate);
         return ResponseEntity.ok(transactions);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/income/summary")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<BigDecimal> getIncomeSummary(
             @RequestParam UUID userId,
             @RequestParam(defaultValue = "6") int monthsBack) {
@@ -74,14 +75,12 @@ public class TransactionController {
         return ResponseEntity.ok(income);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/expense/summary")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<BigDecimal> getExpenseSummary(
             @RequestParam UUID userId,
             @RequestParam(defaultValue = "6") int monthsBack) {
         BigDecimal expense = expenseService.getExpensesForLastMonths(userId, monthsBack);
         return ResponseEntity.ok(expense);
     }
-
 }
-

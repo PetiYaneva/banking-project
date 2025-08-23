@@ -23,21 +23,19 @@ public class LoanRiskController {
 
     private final LoanService loanService;
 
-    // 1) Само оценка
     @PostMapping(value = "/risk-assessment",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     public ResponseEntity<LoanRiskResult> assessRisk(@Valid @RequestBody LoanRequest request) {
         LoanRiskResult result = loanService.assessLoanRisk(request);
         return ResponseEntity.ok(result);
     }
 
-    // 2) Кандидатстване
     @PostMapping(value = "/apply",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     public ResponseEntity<LoanApplicationResponse> apply(@Valid @RequestBody LoanRequest request) {
         LoanApplicationResponse resp = loanService.applyForLoan(request);
         if (resp.isApproved() && resp.getLoanId() != null) {
@@ -48,7 +46,6 @@ public class LoanRiskController {
         return ResponseEntity.ok(resp);
     }
 
-    // 👑 ADMIN only
     @GetMapping("/risk-report/pdf")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> downloadPdf(@RequestParam UUID userId) {
@@ -59,7 +56,6 @@ public class LoanRiskController {
                 .body(pdf);
     }
 
-    // 👑 ADMIN only
     @GetMapping("/risk-report/excel")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> downloadExcel(@RequestParam UUID userId) {
@@ -71,14 +67,14 @@ public class LoanRiskController {
     }
 
     @GetMapping("/obligations/user/{userId}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     public ResponseEntity<BigDecimal> getUserMonthlyObligations(@PathVariable UUID userId) {
         BigDecimal obligations = loanService.getMonthlyObligation(userId);
         return ResponseEntity.ok(obligations != null ? obligations : BigDecimal.ZERO);
     }
 
     @GetMapping("/obligations/loan/{loanId}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     public ResponseEntity<BigDecimal> getLoanMonthlyObligations(@PathVariable UUID loanId) {
         BigDecimal obligations = loanService.getMonthlyObligationByLoanId(loanId);
         return ResponseEntity.ok(obligations != null ? obligations : BigDecimal.ZERO);
