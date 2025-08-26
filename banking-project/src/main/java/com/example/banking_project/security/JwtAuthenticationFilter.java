@@ -40,6 +40,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userId = jwtService.extractClaim(jwt, "userId");
             String role = jwtService.extractClaim(jwt, "role");
 
+            Boolean profileCompleted = jwtService.extractClaim(jwt, "profileCompleted", Boolean.class);
+            if (profileCompleted == null) {
+                String pcStr = jwtService.extractClaim(jwt, "profileCompleted");
+                profileCompleted = (pcStr != null) ? Boolean.valueOf(pcStr) : null;
+            }
+            if (profileCompleted == null) {
+                profileCompleted = userService.isProfileCompletedByEmail(email);
+            }
+            request.setAttribute("profileCompleted", profileCompleted);
+
             UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,

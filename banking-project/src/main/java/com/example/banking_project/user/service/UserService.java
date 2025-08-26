@@ -40,6 +40,11 @@ public class UserService implements UserDetailsService {
         return user;
     }
 
+    public Boolean isProfileCompletedByEmail(String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+        return !user.isEmpty() ? user.get().isProfileCompleted() : false;
+    }
+
     public User findUserById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -47,8 +52,6 @@ public class UserService implements UserDetailsService {
 
     private User initializeUser(RegisterRequest registerRequest){
         return User.builder()
-                .firstName(registerRequest.getFirstName())
-                .lastName(registerRequest.getLastName())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role(UserRole.USER)

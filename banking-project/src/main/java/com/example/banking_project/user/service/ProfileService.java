@@ -29,4 +29,13 @@ public class ProfileService {
 
         userRepository.save(user);
     }
+
+    @Transactional
+    public boolean isProfileCompleted(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return Boolean.TRUE.equals(user.isProfileCompleted());
+    }
+
 }
