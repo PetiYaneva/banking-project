@@ -1,68 +1,73 @@
 package com.example.banking_project.cryptocurrency.service;
 
 import com.example.banking_project.cryptocurrency.configuration.BinanceWebSocketClient;
+import com.example.banking_project.cryptocurrency.model.CryptoSymbol;
+import com.example.banking_project.cryptocurrency.repository.CryptoSymbolRepository;
 import com.example.banking_project.web.dto.crypto.Ticker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Flow;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class LivePriceService {
-    private static final Logger log = LoggerFactory.getLogger(LivePriceService.class);
 
     private final BinanceWebSocketClient ws;
     private final ObjectMapper mapper;
+    private final CryptoSymbolRepository symbolRepo;
+    private final CryptoPriceService priceService; // <-- да ъпдейтваме кеша
+
     private final Sinks.Many<Ticker> sink = Sinks.many().replay().latest();
 
-    // символ (Binance) -> твой id
-    private static final Map<String, String> SYMBOL_TO_ID = Map.ofEntries(
-            Map.entry("BTCUSDT", "bitcoin"),
-            Map.entry("ETHUSDT", "ethereum"),
-            Map.entry("BNBUSDT", "binancecoin"),
-            Map.entry("XRPUSDT", "ripple"),
-            Map.entry("ADAUSDT", "cardano"),
-            Map.entry("SOLUSDT", "solana"),
-            Map.entry("DOGEUSDT", "dogecoin"),
-            Map.entry("DOTUSDT", "polkadot"),
-            Map.entry("MATICUSDT", "polygon"),
-            Map.entry("LTCUSDT", "litecoin"),
-            Map.entry("TRXUSDT", "tron"),
-            Map.entry("AVAXUSDT", "avalanche-2"),
-            Map.entry("LINKUSDT", "chainlink"),
-            Map.entry("UNIUSDT", "uniswap"),
-            Map.entry("XLMUSDT", "stellar"),
-            Map.entry("XMRUSDT", "monero"),
-            Map.entry("OKBUSDT", "okb"),
-            Map.entry("ICPUSDT", "internet-computer"),
-            Map.entry("APTUSDT", "aptos"),
-            Map.entry("NEARUSDT", "near")
-    );
-
-    public LivePriceService(BinanceWebSocketClient ws, ObjectMapper mapper) {
-        this.ws = ws;
-        this.mapper = mapper;
-    }
+    // runtime cache на символите, които следим
+    private volatile List<CryptoSymbol> symbols = List.of();
+    private volatile long symbolsHash = 0L;
 
     @PostConstruct
     public void init() {
-        // 1) комбиниран stream за 20 символа
-        List<String> streams = SYMBOL_TO_ID.keySet().stream()
-                .map(s -> s.toLowerCase() + "@trade") // BTCUSDT -> btcusdt@trade
+        reloadSymbolsIfChanged();
+        connect();
+    }
+
+    /** През 30 сек проверяваме: (1) жив ли е WS, (2) има ли промяна в символите. */
+    @Scheduled(fixedDelay = 30_000)
+    public void healthCheck() {
+        boolean alive = ws.isAlive(30_000);
+        boolean changed = reloadSymbolsIfChanged();
+        if (!alive || changed) {
+            log.warn("WS {}. Reconnecting...", !alive ? "stale" : "symbol set changed");
+            connect();
+        }
+    }
+
+    /** Публичен стрийм за фронтенд/други консумации */
+    public Flux<Ticker> streamPrices() {
+        return sink.asFlux();
+    }
+
+
+    private void connect() {
+        if (symbols.isEmpty()) return;
+
+        List<String> streams = symbols.stream()
+                .map(s -> s.getBinancePair().toLowerCase() + "@trade")
                 .toList();
+
         ws.connectForStreams(streams);
 
-        // 2) абонамент
         ws.getPublisher().subscribe(new Flow.Subscriber<String>() {
             private Flow.Subscription sub;
 
@@ -73,17 +78,14 @@ public class LivePriceService {
             @Override public void onNext(String json) {
                 try {
                     JsonNode root = mapper.readTree(json);
-
-                    // Комбинираният WS връща {"stream":"btcusdt@trade","data":{...}}
                     JsonNode data = root.get("data");
                     if (data != null && data.isObject()) {
                         handleTrade(data);
                     } else {
-                        // fallback: ако по някаква причина е директното trade събитие
                         handleTrade(root);
                     }
                 } catch (Exception ex) {
-                    log.warn("Failed to parse WS message (len={}): {}", json.length(), ex.getMessage());
+                    log.warn("Failed to parse WS message: {}", ex.getMessage());
                     log.debug("Payload: {}", json, ex);
                 } finally {
                     sub.request(1);
@@ -91,18 +93,26 @@ public class LivePriceService {
             }
 
             private void handleTrade(JsonNode n) {
-                if (!"trade".equals(opt(n, "e"))) return;
-                String symbol = opt(n, "s");         // BTCUSDT
-                String id = SYMBOL_TO_ID.get(symbol);
-                String priceStr = opt(n, "p");       // цена като текст
-                if (id != null && priceStr != null) {
-                    sink.tryEmitNext(new Ticker(id, new BigDecimal(priceStr)));
-                }
+                if (!"trade".equals(opt(n,"e"))) return;
+                String pair = opt(n,"s"); // BTCUSDT
+                String priceStr = opt(n,"p");
+                if (pair == null || priceStr == null) return;
+
+                // намираме символа + coingecko id по pair
+                symbols.stream()
+                        .filter(cs -> cs.getBinancePair().equalsIgnoreCase(pair))
+                        .findFirst()
+                        .ifPresent(cs -> {
+                            BigDecimal price = new BigDecimal(priceStr);
+                            // a) емит към стрийма (id е coingeckoId за съвместимост с FE)
+                            sink.tryEmitNext(new Ticker(cs.getCoingeckoId(), price));
+                            // b) ъпдейт към кеша (по символ, напр. "BTC")
+                            priceService.updatePrice(cs.getSymbol(), price, "WS");
+                        });
             }
 
             @Override public void onError(Throwable t) {
                 log.error("WS subscriber error: {}", t.getMessage(), t);
-                // оставяме reconnect логиката да се тригърне от healthCheck()
             }
 
             @Override public void onComplete() {
@@ -111,20 +121,23 @@ public class LivePriceService {
         });
     }
 
-    /** Health check на всеки 30 сек – ако няма събития, извикай отново connectForStreams(...) */
-    @Scheduled(fixedDelay = 30_000)
-    public void healthCheck() {
-        if (!ws.isAlive(30_000)) {
-            log.warn("WS considered stale. Reconnecting...");
-            List<String> streams = SYMBOL_TO_ID.keySet().stream()
-                    .map(s -> s.toLowerCase() + "@trade")
-                    .toList();
-            ws.connectForStreams(streams);
-        }
-    }
+    /** Зарежда символите от БД и връща дали сетът се е променил. */
+    private boolean reloadSymbolsIfChanged() {
+        List<CryptoSymbol> fresh = symbolRepo.findAllByEnabledTrue();
+        long hash = fresh.stream()
+                .sorted(Comparator.comparing(CryptoSymbol::getSymbol))
+                .map(cs -> cs.getSymbol()+"|"+cs.getBinancePair()+"|"+cs.getCoingeckoId())
+                .collect(Collectors.joining(","))
+                .hashCode();
 
-    public Flux<Ticker> streamPrices() {
-        return sink.asFlux();
+        if (hash != symbolsHash) {
+            this.symbols = fresh;
+            this.symbolsHash = hash;
+            log.info("Loaded {} symbols: {}", fresh.size(),
+                    fresh.stream().map(CryptoSymbol::getSymbol).collect(Collectors.joining(",")));
+            return true;
+        }
+        return false;
     }
 
     private static String opt(JsonNode n, String f) {
@@ -132,3 +145,4 @@ public class LivePriceService {
         return (v == null || v.isNull()) ? null : v.asText();
     }
 }
+

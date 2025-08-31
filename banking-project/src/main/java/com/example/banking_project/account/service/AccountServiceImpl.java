@@ -213,4 +213,40 @@ public class AccountServiceImpl implements AccountService {
         acc.setBalance(acc.getBalance().add(amount));
         return accountRepository.save(acc);
     }
+
+    @Override
+    public List<Account> getAccountsByBalanceGte(BigDecimal minBalance) {
+        return accountRepository.findAllByBalanceGreaterThanEqual(minBalance);
+    }
+
+    @Override
+    public List<Account> getAccountsByBalanceLte(BigDecimal maxBalance) {
+        return accountRepository.findAllByBalanceLessThanEqual(maxBalance);
+    }
+
+    @Override
+    public List<Account> getAccountsByCurrency(String currency) {
+        // Бележка: ако полето в Entity е currencyCode, преименувай в репото на findAllByCurrencyCode
+        return accountRepository.findAllByCurrency(currency);
+    }
+
+    @Override
+    public List<Account> getActiveAccounts() {
+        return accountRepository.findAllByActiveTrue();
+    }
+
+    @Override
+    public List<Account> getInactiveAccounts() {
+        return accountRepository.findAllByActiveFalse();
+    }
+
+    @Override
+    public List<Account> getAllAccountsOrderByBalanceDesc() {
+        return accountRepository.findAllByOrderByBalanceDesc();
+    }
+
+    @Override
+    public List<Account> getAllAccountsOrderByCreatedOnAsc() {
+        return accountRepository.findAllByOrderByCreatedOnAsc();
+    }
 }

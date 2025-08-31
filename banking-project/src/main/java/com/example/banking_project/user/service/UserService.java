@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,5 +75,26 @@ public class UserService implements UserDetailsService {
 
     public Optional<User> getUserByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    public List<User> getAllUsers (){
+        return List.of((User) userRepository.findAll());
+    }
+
+    public List<User> getAllUsersOrderedByCreatedAtDesc() {
+        return userRepository.getAllByOrderByCreatedOnDesc();
+    }
+
+
+    public List<User> getUsersByPeriod(LocalDateTime from, LocalDateTime to) {
+        return userRepository.findAllByCreatedOnBetween(from, to);
+    }
+
+    public List<User> searchUsersByEmail(String queryPart) {
+        return userRepository.findAllByEmailContainingIgnoreCase(queryPart);
+    }
+
+    public List<User> getUsersWithUncompletedProfile() {
+        return userRepository.findAllByProfileCompletedFalse();
     }
 }

@@ -61,7 +61,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Account> accounts;
 
-    // Ново: флаг за двуфазен онбординг
     @Column(name = "profile_completed", nullable = false)
     private boolean profileCompleted;
 

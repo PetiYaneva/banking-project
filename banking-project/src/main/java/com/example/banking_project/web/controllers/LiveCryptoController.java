@@ -18,11 +18,6 @@ public class LiveCryptoController {
 
     private final LivePriceService service;
 
-    /**
-     * Server-Sent Events: /api/crypto/live
-     * – изисква логин + PROFILE_COMPLETED (USER/ADMIN)
-     * – с лека „throttle“: максимум 1 събитие/сек.
-     */
     @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping(value = "/api/crypto/live", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<Flux<Ticker>> streamBtcLive() {

@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/crypto/trade")
@@ -25,21 +26,19 @@ public class CryptoTradeController {
     public PlaceOrderResponse placeOrder(@RequestBody @Valid PlaceOrderRequest req,
                                          HttpServletRequest request) {
         UUID userId = UUID.fromString((String) request.getAttribute("userId"));
-
         tradingService.assertAccountOwnedByUserOrAdminByIban(req.iban(), userId);
-
-        return tradingService.placeMarketOrder(req.withUserId(userId));
+        return tradingService.placeOrder(req, userId);
     }
+
 
     @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
-    @GetMapping("/portfolio/by-account")
-    public List<HoldingView> portfolioByAccount(@RequestParam UUID accountId,
-                                                @RequestParam(defaultValue = "usd") String vs,
-                                                HttpServletRequest request) {
+    @GetMapping("/portfolio/by-user")
+    public List<HoldingView> portfolioByUser(@RequestParam(defaultValue = "usd") String vs,
+                                             HttpServletRequest request) {
         UUID userId = UUID.fromString((String) request.getAttribute("userId"));
-        tradingService.assertAccountOwnedByUserOrAdmin(accountId, userId);
-        return tradingService.getPortfolioByAccount(accountId, vs);
+        return tradingService.getPortfolioByUser(userId, vs);
     }
+
 
     @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping("/orders/by-account")
@@ -47,6 +46,13 @@ public class CryptoTradeController {
                                              HttpServletRequest request) {
         UUID userId = UUID.fromString((String) request.getAttribute("userId"));
         tradingService.assertAccountOwnedByUserOrAdmin(accountId, userId);
-        return tradingService.getOrdersByAccount(accountId);
+        return tradingService.getOrdersByAccount(accountId, userId);
+    }
+
+    @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
+    @GetMapping("/orders/by-user")
+    public List<CryptoOrder> ordersByUser(HttpServletRequest request) {
+        UUID userId = UUID.fromString((String) request.getAttribute("userId"));
+        return tradingService.getOrdersByUser(userId);
     }
 }

@@ -43,21 +43,19 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // CORS preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // публични ендпойнти за FE преди логин/профил
                         .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/enums/employment").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/users/profile/completed").permitAll()
 
-                        // попълване на профил - нужен е логнат user, но не и PROFILE_COMPLETED
+                        .requestMatchers(HttpMethod.GET, "/api/crypto/simple-price").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/crypto/history/**").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/users/profile/complete").authenticated()
 
-                        // всичко останало под /api/** иска PROFILE_COMPLETED
                         .requestMatchers("/api/**").hasAuthority("PROFILE_COMPLETED")
 
-                        // за всеки друг път изискваме аутентикация
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)

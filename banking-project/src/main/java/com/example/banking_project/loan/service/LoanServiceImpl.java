@@ -7,6 +7,7 @@ import com.example.banking_project.loan.model.LoanStatus;
 import com.example.banking_project.loan.repository.LoanRepository;
 import com.example.banking_project.loan.validation.LoanValidationService;
 import com.example.banking_project.loan.view.CreditHistoryView;
+import com.example.banking_project.loan.view.LoanView;
 import com.example.banking_project.user.model.User;
 import com.example.banking_project.user.service.UserService;
 import com.example.banking_project.web.dto.LoanApplicationResponse;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -70,17 +73,14 @@ public class LoanServiceImpl implements LoanService {
                 userId, monthlyPayment, months);
 
         accountService.createCreditAccount(request, userId);
-
         return saved;
     }
-
 
     private static BigDecimal computeAnnuity(BigDecimal principal, BigDecimal monthlyRate, int months) {
         if (months <= 0) throw new IllegalArgumentException("Months must be > 0");
         if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
             return principal.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
         }
-        // M = P * r / (1 - (1 + r)^-n)
         double r = monthlyRate.doubleValue();
         double p = principal.doubleValue();
         double pow = Math.pow(1.0 + r, -months);
@@ -88,21 +88,14 @@ public class LoanServiceImpl implements LoanService {
         return BigDecimal.valueOf(m).setScale(2, RoundingMode.HALF_UP);
     }
 
-    private static BigDecimal nvl(BigDecimal x) {
-        return x == null ? BigDecimal.ZERO : x;
-    }
+    private static BigDecimal nvl(BigDecimal x) { return x == null ? BigDecimal.ZERO : x; }
 
-    @Override
-    public LoanRiskResult assessLoanRisk(LoanRequest request) {
-        return loanRiskEngine.assess(request);
-    }
+    @Override public LoanRiskResult assessLoanRisk(LoanRequest request) { return loanRiskEngine.assess(request); }
 
     @Transactional
     @Override
     public LoanApplicationResponse applyForLoan(LoanRequest request) {
         LoanRiskResult eval = loanRiskEngine.assess(request);
-
-        // Одобряваме само при Low Risk (смени логиката, ако искаш и Medium)
         boolean approved = "Low Risk".equalsIgnoreCase(eval.getRiskClass());
         if (!approved) {
             return LoanApplicationResponse.builder()
@@ -111,10 +104,8 @@ public class LoanServiceImpl implements LoanService {
                     .recommendation(eval.getRecommendation())
                     .build();
         }
-
         loanValidationService.validateLoanRequest(request);
-        Loan loan = createApprovedLoanRecord(request); // връща Loan
-
+        Loan loan = createApprovedLoanRecord(request);
         return LoanApplicationResponse.builder()
                 .approved(true)
                 .riskClass(eval.getRiskClass())
@@ -127,41 +118,93 @@ public class LoanServiceImpl implements LoanService {
     @Override
     public String creditHistoryEvaluation(UUID userId) {
         CreditHistoryView view = loanRepository.getCreditHistoryByUserId(userId);
-        if (view == null) {
-            return "neutral";
-        }
-        return view.getCreditStatus();
+        return view == null ? "neutral" : view.getCreditStatus();
     }
 
     @Override
     public byte[] generatePdfReport(UUID userId) {
         LoanRiskReportData data = riskReportService.prepareData(userId);
-        try {
-            return riskReportService.generatePdf(data);
-        } catch (Exception e) {
-            log.error("Failed to generate PDF loan report: {}", e.getMessage());
-            throw new RuntimeException("PDF generation failed", e);
-        }
+        try { return riskReportService.generatePdf(data); }
+        catch (Exception e) { log.error("Failed to generate PDF loan report: {}", e.getMessage()); throw new RuntimeException("PDF generation failed", e); }
     }
 
     @Override
     public byte[] generateExcelReport(UUID userId) {
         LoanRiskReportData data = riskReportService.prepareData(userId);
-        try {
-            return riskReportService.generateExcel(data);
-        } catch (Exception e) {
-            log.error("Failed to generate Excel loan report: {}", e.getMessage());
-            throw new RuntimeException("Excel generation failed", e);
-        }
+        try { return riskReportService.generateExcel(data); }
+        catch (Exception e) { log.error("Failed to generate Excel loan report: {}", e.getMessage()); throw new RuntimeException("Excel generation failed", e); }
     }
 
-    @Override
-    public BigDecimal getMonthlyObligation(UUID userId) {
-        return loanRepository.getMonthlyObligations(userId);
+    @Override public BigDecimal getMonthlyObligation(UUID userId) { return loanRepository.getMonthlyObligations(userId); }
+    @Override public BigDecimal getMonthlyObligationByLoanId(UUID loanId) { return loanRepository.getMonthlyObligationsByLoanId(loanId); }
+    @Override public Optional<List<Loan>> getLoansByUserId(UUID userId) { return Optional.of(loanRepository.getLoansByUserId(userId)); }
+
+
+    @Override public List<Loan> getLoansByStatus(LoanStatus status) {
+        return loanRepository.findAllByLoanStatus(status);
     }
 
-    @Override
-    public BigDecimal getMonthlyObligationByLoanId(UUID loanId) {
-        return loanRepository.getMonthlyObligationsByLoanId(loanId);
+    @Override public List<Loan> getLoansByStatusAndNextPaymentBetween(LoanStatus status, LocalDate from, LocalDate to) {
+        return loanRepository.findAllByLoanStatusAndNextDateOfPaymentBetween(status, from, to);
+    }
+
+    @Override public List<Loan> getLoansAppliedBetween(LocalDate from, LocalDate to) {
+        return loanRepository.findAllByDateOfApplyingBetween(from, to);
+    }
+
+    @Override public List<Loan> getLoansFinalBetween(LocalDate from, LocalDate to) {
+        return loanRepository.findAllByFinalDateBetween(from, to);
+    }
+
+    @Override public List<Loan> getLoansByInterestBetween(BigDecimal minRate, BigDecimal maxRate) {
+        return loanRepository.findAllByInterestRateBetween(minRate, maxRate);
+    }
+
+    @Override public List<Loan> getLoansByTotalBetween(BigDecimal minAmount, BigDecimal maxAmount) {
+        return loanRepository.findAllByTotalAmountBetween(minAmount, maxAmount);
+    }
+
+    @Override public List<Loan> getLoansByRemainingGte(BigDecimal minRemaining) {
+        return loanRepository.findAllByRemainingAmountGreaterThanEqual(minRemaining);
+    }
+
+    @Override public List<Loan> getLoansByRemainingLte(BigDecimal maxRemaining) {
+        return loanRepository.findAllByRemainingAmountLessThanEqual(maxRemaining);
+    }
+
+    @Override public List<Loan> getLoansByMissedPaymentsGt(int minMissed) {
+        return loanRepository.findAllByMissedPaymentsGreaterThan(minMissed);
+    }
+
+    @Override public List<LoanView> getDueLoanViews(LocalDate date) {
+        return loanRepository.findDueLoanViews(date);
+    }
+
+    @Override public List<Loan> getActiveLoansDueBy(LocalDate date) {
+        return loanRepository.findAllByLoanStatusAndNextDateOfPaymentLessThanEqual(LoanStatus.ACTIVE, date);
+    }
+
+    @Override public List<Loan> getLoansByRepaymentAccount(UUID accountId) {
+        return loanRepository.findAllByRepaymentAccount_Id(accountId);
+    }
+
+    @Override public List<Loan> getLoansByRepaymentIban(String iban) {
+        return loanRepository.findAllByRepaymentIban(iban);
+    }
+
+    @Override public BigDecimal getTotalRemainingByUser(UUID userId) {
+        return loanRepository.getTotalRemainingByUser(userId);
+    }
+
+    @Override public long countOverdueByUser(UUID userId) {
+        return loanRepository.countOverdueByUser(userId);
+    }
+
+    @Override public List<Loan> getAllOrderByNextPaymentAsc() {
+        return loanRepository.findAllByOrderByNextDateOfPaymentAsc();
+    }
+
+    @Override public List<Loan> getAllOrderByRemainingDesc() {
+        return loanRepository.findAllByOrderByRemainingAmountDesc();
     }
 }

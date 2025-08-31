@@ -11,12 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,6 +24,8 @@ public class AccountController {
 
     private final AccountService accountService;
     private final TransactionService transactionService;
+
+    // -------- USER/ADMIN (профил попълнен) --------
 
     @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping("/{userId}/accounts")
@@ -68,5 +65,42 @@ public class AccountController {
         List<TransactionTransferResponse> transactions = transactionService.getTransactionsByAccount(id);
         return ResponseEntity.ok(transactions);
     }
-}
 
+    // -------- ADMIN-ONLY СПРАВКИ (само роля ADMIN, без PROFILE_COMPLETED) --------
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/high-balance")
+    public ResponseEntity<List<Account>> getAccountsByBalanceGte(@RequestParam("min") BigDecimal min) {
+        return ResponseEntity.ok(accountService.getAccountsByBalanceGte(min));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/low-balance")
+    public ResponseEntity<List<Account>> getAccountsByBalanceLte(@RequestParam("max") BigDecimal max) {
+        return ResponseEntity.ok(accountService.getAccountsByBalanceLte(max));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/currency/{currency}")
+    public ResponseEntity<List<Account>> getAccountsByCurrency(@PathVariable String currency) {
+        return ResponseEntity.ok(accountService.getAccountsByCurrency(currency));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/sorted/balance-desc")
+    public ResponseEntity<List<Account>> getAllAccountsOrderByBalanceDesc() {
+        return ResponseEntity.ok(accountService.getAllAccountsOrderByBalanceDesc());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/sorted/created-asc")
+    public ResponseEntity<List<Account>> getAllAccountsOrderByCreatedOnAsc() {
+        return ResponseEntity.ok(accountService.getAllAccountsOrderByCreatedOnAsc());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/id/{id}")
+    public ResponseEntity<Account> getAccountByIdAdmin(@PathVariable UUID id) {
+        return ResponseEntity.ok(accountService.getAccountById(id));
+    }
+}

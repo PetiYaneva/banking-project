@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/crypto")
@@ -18,22 +19,31 @@ public class CryptoController {
     private final CryptoService service;
     public CryptoController(CryptoService service) { this.service = service; }
 
-    @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
+    // достъпът се управлява от SecurityConfiguration -> permitAll за GET /simple-price
+    @PreAuthorize("permitAll()")
     @GetMapping(value = "/simple-price", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<List<CryptoPriceDto>> getSimplePrice(
             @RequestParam @NotBlank String ids,
             @RequestParam(name = "vs") @NotBlank String vsCurrencies
     ) {
-        return service.getSimplePrices(ids, vsCurrencies);
+        // нормализация
+        String normIds = ids.toLowerCase(Locale.ROOT).trim();
+        String normVs  = vsCurrencies.toLowerCase(Locale.ROOT).trim();
+        return service.getSimplePrices(normIds, normVs);
     }
 
-    @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
-    @GetMapping(value = "/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    // достъпът се управлява от SecurityConfiguration -> permitAll за GET /history
+    @PreAuthorize("permitAll()")
+    @GetMapping(value = "/history/{id}/{vs}/{days}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<CryptoHistoryDto> getHistory(
-            @RequestParam @NotBlank String id,
-            @RequestParam(name = "vs", defaultValue = "usd") String vsCurrency,
-            @RequestParam(defaultValue = "30") String days
+            @PathVariable("id") @NotBlank String id,
+            @PathVariable("vs") String vsCurrency,
+            @PathVariable("days") String days
     ) {
-        return service.getHistory(id, vsCurrency, days);
+        String normId = id.toLowerCase(Locale.ROOT).trim();
+        String normVs = (vsCurrency == null || vsCurrency.isBlank() ? "usd" : vsCurrency.toLowerCase(Locale.ROOT).trim());
+        String normDays = (days == null || days.isBlank() ? "30" : days.trim());
+
+        return service.getHistory(normId, normVs, normDays);
     }
 }
