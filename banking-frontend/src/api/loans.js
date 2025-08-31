@@ -12,3 +12,4 @@ export const getUserObligations = (userId) =>
   http.get(`/api/loans/obligations/user/${userId}`);
 export const getLoanObligations = (loanId) =>
   http.get(`/api/loans/obligations/loan/${loanId}`);
+

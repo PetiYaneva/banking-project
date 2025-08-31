@@ -1,66 +1,123 @@
 <script setup>
-import { ref, onMounted } from "vue";
-import { createLoan, getLoansByUser } from "../api/loans";
+import { ref, computed, onMounted } from "vue";
+import { useAuth } from "../stores/auth";
+import { getUserAccounts } from "../api/account"; 
+import http from "../api/http";
 
-// форма за нов заем
-const form = ref({
-  accountId: "",         // IBAN или account UUID (спрямо твоя бекенд)
-  totalAmount: 10000,    // обща сума
-  termMonths: 24,        // срок (месеци)
-  interestRate: 7.5,     // годишна лихва (%)
-  startDate: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
-});
-
+const auth = useAuth();
+const userId = computed(() => auth.user?.id || auth.userId);
 const loading = ref(false);
 const listLoading = ref(false);
 const message = ref("");
-const loans = ref([]);           // списък със заеми
-const expandId = ref(null);      // кой ред е разгънат
+const loans = ref([]);
+const expandId = ref(null);
 
-async function loadLoans() {
-  listLoading.value = true;
+const form = ref({
+  accountRef: "", 
+  totalAmount: null,
+  termMonths: null,
+  interestAnnual: null,
+  startDate: ""
+});
+
+form.value.annualInterestRate = form.value.interestAnnual ?? form.value.annualInterestRate ?? null;
+delete form.value.interestAnnual;
+
+const accounts = ref([]);
+async function loadAccounts() {
+  if (!userId.value) return;
   try {
-    const { data } = await getLoansByUser(); // бекендът ще чете от JWT userId
-    loans.value = Array.isArray(data) ? data : [];
-  } finally {
-    listLoading.value = false;
+    const { data } = await getUserAccounts(userId.value);
+    accounts.value = Array.isArray(data) ? data : [];
+  } catch (e) {
+    accounts.value = [];
+    console.error("loadAccounts error:", e);
   }
 }
 
 async function submit() {
-  loading.value = true;
   message.value = "";
+  if (!form.value.accountRef) {
+    message.value = "Моля, избери сметка (IBAN или ID).";
+    return;
+  }
+  if (!form.value.totalAmount || !form.value.termMonths || !form.value.annualInterestRate) {
+    message.value = "Моля, попълни сума, срок и годишна лихва.";
+    return;
+  }
+
+  const payload = {
+    accountRef: form.value.accountRef,                 // IBAN или UUID
+    totalAmount: Number(form.value.totalAmount),
+    termMonths: Number(form.value.termMonths),
+    annualInterestRate: Number(form.value.annualInterestRate),
+    startDate: form.value.startDate || null,           // ISO yyyy-mm-dd от input[type=date]
+  };
+
+  loading.value = true;
   try {
-    const payload = { ...form.value };
-    const { data } = await createLoan(payload);
-    message.value = "Заявката за кредит е създадена успешно.";
-    // добавяме новия заем най-отгоре
-    loans.value = [data, ...loans.value];
-    // по желание: нулиране на формата
-    // form.value = { accountId: "", totalAmount: 0, termMonths: 12, interestRate: 0, startDate: new Date().toISOString().slice(0,10) };
+    const { data } = await http.post("/api/loans/apply", payload);
+    message.value = data?.approved
+      ? "Заявката е одобрена."
+      : "Заявката е подадена.";
+    await loadLoans();
   } catch (e) {
-    message.value = e?.response?.data?.message || "Грешка при създаване на кредит.";
+    message.value = e?.response?.data?.message || "Грешка при заявката.";
+    console.error("apply loan error:", e);
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(loadLoans);
+async function loadLoans() {
+  if (!userId.value) return;
+  listLoading.value = true;
+  try {
+    const { data } = await http.get(`/api/loans ${userId.value}`);
+    loans.value = Array.isArray(data) ? data : (data?.content ?? []);
+  } catch (e) {
+    loans.value = [];
+    console.error("load loans error:", e);
+  } finally {
+    listLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadLoans();
+  loadAccounts();
+});
 </script>
+
 
 <template>
   <div class="space-y-6">
-    <!-- Форма за създаване на заем -->
     <div class="bg-white border rounded-2xl p-5 max-w-2xl">
       <h2 class="font-semibold mb-3">Нов кредит</h2>
       <div class="grid sm:grid-cols-2 gap-3 text-sm">
-        <label>
-          Account ID / IBAN
-          <input v-model="form.accountId" class="mt-1 w-full border rounded-md px-3 py-2" placeholder="UUID или IBAN" />
-        </label>
+        <div>
+          <label class="text-sm text-slate-600">Account ID / IBAN</label>
+          <input
+            v-model="form.accountRef"
+            list="accountsDatalist"            
+            type="text"
+            class="mt-1 w-full rounded-md border px-3 py-2"
+            placeholder="UUID или IBAN"
+          />
+          <datalist id="accountsDatalist">
+            <option
+              v-for="a in accounts"
+              :key="a.id"
+              :value="a.iban || a.id"
+            >
+              {{ a.accountType }} — {{ a.iban }} ({{ Number(a.balance||0).toFixed(2) }} {{ a.currencyCode || 'BGN' }})
+            </option>
+          </datalist>
+        </div>
+
 
         <label>
-          Обща сума (USD)
+          Обща сума (BGN)
           <input type="number" step="0.01" v-model.number="form.totalAmount" class="mt-1 w-full border rounded-md px-3 py-2" />
         </label>
 
@@ -71,7 +128,7 @@ onMounted(loadLoans);
 
         <label>
           Годишна лихва (%)
-          <input type="number" step="0.01" v-model.number="form.interestRate" class="mt-1 w-full border rounded-md px-3 py-2" />
+          <input type="number" step="0.01" v-model.number="form.annualInterestRate" class="mt-1 w-full border rounded-md px-3 py-2" />
         </label>
 
         <label>
@@ -85,13 +142,12 @@ onMounted(loadLoans);
         @click="submit"
         class="mt-4 inline-flex items-center justify-center rounded-md bg-blue-600 text-white px-4 py-2 hover:bg-blue-700"
       >
-        {{ loading ? "Изпращане..." : "Създай кредит" }}
+        {{ loading ? "Изпращане..." : "Заяви кредит" }}
       </button>
 
       <p v-if="message" class="text-sm mt-3">{{ message }}</p>
     </div>
 
-    <!-- Списък със заеми -->
     <div class="bg-white border rounded-2xl p-5">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold">Моите кредити</h2>
@@ -138,7 +194,6 @@ onMounted(loadLoans);
                 </button>
               </td>
             </tr>
-            <!-- Разгънати детайли -->
             <tr v-for="l in loans" v-show="expandId === l.id" :key="l.id + '-details'" class="border-t bg-slate-50/60">
               <td colspan="8" class="p-3">
                 <div class="grid sm:grid-cols-3 gap-3 text-sm">
@@ -156,7 +211,6 @@ onMounted(loadLoans);
                   </div>
                 </div>
 
-                <!-- Погасителен план (ако бекендът връща) -->
                 <div v-if="l.schedule?.length" class="mt-3">
                   <div class="text-slate-600 mb-1">Погасителен план</div>
                   <div class="overflow-x-auto">

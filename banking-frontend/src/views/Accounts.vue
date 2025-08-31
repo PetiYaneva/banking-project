@@ -1,16 +1,16 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { getUserAccounts, getUserTotalBalance, createAccount } from "../api/account";
-import { useAuth } from "../stores/auth"; // ако имаш Pinia store
+import { useAuth } from "../stores/auth";
 
-const auth = useAuth(); // очаква да държи user.id или userId
+const auth = useAuth(); 
 const userId = computed(() => auth.user?.id || auth.userId);
 
 const loading = ref(false);
 const accounts = ref([]);
 const total = ref(null);
-const q = ref("");              // търсене по IBAN
-const type = ref("ALL");        // CURRENT / SAVINGS / ALL
+const q = ref("");             
+const type = ref("ALL");
 
 const newAcc = ref({ accountType: "SAVING", initialBalance: 0 });
 const creating = ref(false);
@@ -33,7 +33,7 @@ async function load() {
       getUserTotalBalance(userId.value),
     ]);
     accounts.value = acc.data || [];
-    total.value = bal.data?.total ?? null;
+    total.value = bal.data ?? null;
   } finally {
     loading.value = false;
   }
@@ -70,12 +70,13 @@ onMounted(load);
         <input v-model="q" class="border rounded-md px-3 py-2 text-sm" placeholder="Търси по IBAN" />
         <select v-model="type" class="border rounded-md px-3 py-2 text-sm">
           <option value="ALL">Всички типове</option>
-          <option value="CURRENT">CURRENT</option>
-          <option value="SAVINGS">SAVINGS</option>
+            <option value="DEPOSIT">DEPOSIT</option>
+            <option value="CREDIT">CREDIT</option>
+            <option value="SAVING">SAVING</option>
         </select>
         <div class="text-sm flex items-center">
           <span class="text-slate-500 mr-1">Общ баланс:</span>
-          <strong v-if="total !== null">{{ total.toLocaleString('bg-BG') }} $</strong>
+          <strong v-if="total !== null">{{ total.toLocaleString('bg-BG') }} BGN</strong>
           <span v-else class="text-slate-400">—</span>
         </div>
       </div>
@@ -94,7 +95,7 @@ onMounted(load);
             <tr v-for="a in filtered" :key="a.id || a.iban" class="border-t">
               <td class="py-2 font-medium">{{ a.iban }}</td>
               <td class="py-2">{{ a.accountType }}</td>
-              <td class="py-2 tabular-nums">{{ (a.balance ?? 0).toLocaleString('bg-BG') }} $</td>
+              <td class="py-2 tabular-nums">{{ (a.balance ?? 0).toLocaleString('bg-BG') }} BGN</td>
               <td class="py-2 whitespace-nowrap">{{ a.createdAt || '-' }}</td>
             </tr>
           </tbody>
@@ -115,7 +116,7 @@ onMounted(load);
           </select>
         </label>
         <label>
-          Начален баланс (USD)
+          Начален баланс (BGN)
           <input type="number" step="0.01" v-model.number="newAcc.initialBalance" class="mt-1 w-full border rounded-md px-3 py-2"/>
         </label>
       </div>

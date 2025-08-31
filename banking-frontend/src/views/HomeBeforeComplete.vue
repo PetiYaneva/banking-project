@@ -1,8 +1,13 @@
 <script setup>
 import { ref, defineComponent } from "vue";
 import { RouterLink } from "vue-router";
+import { useAuth } from "../stores/auth";
+
 
 const profileCompleted = ref(false);
+
+const auth = useAuth();
+function onLogout() { auth.logout?.(); }
 
 
 const steps = [
@@ -62,21 +67,39 @@ const DemoAccountCard = defineComponent({
 <template>
   <div class="min-h-screen bg-slate-50">
     <!-- Topbar -->
-    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-      <div class="mx-auto max-w-7xl h-14 px-4 flex items-center justify-between">
-        <RouterLink to="/" class="font-bold">BankingApp</RouterLink>
+<header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+  <div class="mx-auto max-w-7xl h-14 px-4 flex items-center justify-between">
+    <!-- Лого / име -->
+    <RouterLink to="/" class="font-bold">BankingApp</RouterLink>
 
-        <div class="flex items-center gap-3">
-          <span
-            class="inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border"
-            :class="profileCompleted ? 'text-emerald-700 border-emerald-300 bg-emerald-50' : 'text-amber-700 border-amber-300 bg-amber-50'"
-          >
-            <span class="w-1.5 h-1.5 rounded-full" :class="profileCompleted ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-            {{ profileCompleted ? 'Профилът е завършен' : 'Профилът не е завършен' }}
-          </span>
-        </div>
-      </div>
-    </header>
+    <!-- Десен контейнер -->
+    <div class="flex items-center gap-3">
+      <!-- бейдж за профил -->
+      <span
+        class="inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border"
+        :class="profileCompleted
+          ? 'text-emerald-700 border-emerald-300 bg-emerald-50'
+          : 'text-amber-700 border-amber-300 bg-amber-50'"
+      >
+        <span class="w-1.5 h-1.5 rounded-full"
+              :class="profileCompleted ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+        {{ profileCompleted ? 'Профилът е завършен' : 'Профилът не е завършен' }}
+      </span>
+
+      <button
+        @click="onLogout"
+        class="inline-flex items-center justify-center h-9 px-5 rounded-full
+               bg-slate-900 text-white text-sm font-medium
+               hover:bg-slate-800 active:bg-slate-900 shadow-sm
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50
+               transition"
+        aria-label="Logout"
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+</header>
 
     <div class="mx-auto max-w-7xl px-4 py-6 grid grid-cols-12 gap-4 lg:gap-6">
       <!-- Sidebar -->

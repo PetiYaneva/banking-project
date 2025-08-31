@@ -1,30 +1,29 @@
-// src/api/http.js
 import axios from "axios";
 
-export const http = axios.create({
-  headers: { "Content-Type": "application/json" },
-});
-
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ↓↓↓ ДОБАВИ ТОВА ↓↓↓
 export function decodeJwt(token) {
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const json = atob(base64);
-    // безопасно към UTF-8
-    const utf8 = decodeURIComponent(
-      Array.from(json, c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
-    );
-    return JSON.parse(utf8); // { userId, role, profileCompleted, ... }
-  } catch {
-    return {};
-  }
+  const [, payload] = String(token || "").split(".");
+  if (!payload) return {};
+  try { return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))); }
+  catch { return {}; }
 }
 
-export default http;
+export const http = axios.create({
+  baseURL: "http://localhost:8080",
+  headers: { "Content-Type": "application/json" }
+});
+
+http.interceptors.request.use(cfg => {
+  const t = localStorage.getItem("token");
+  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  return cfg;
+});
+
+http.interceptors.response.use(
+  r => r,
+  err => {
+    const url = err?.config?.baseURL + (err?.config?.url || "");
+    const status = err?.response?.status;
+    console.error("HTTP error:", status, url, err?.response?.data || err?.message);
+    throw err;
+  }
+);

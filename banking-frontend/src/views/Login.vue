@@ -35,8 +35,13 @@ async function submit() {
   try {
     loading.value = true;
     error.value = "";
-    await auth.login({ email: email.value, password: password.value }); // <-- обект
-    router.push(auth.profileCompleted ? "/dashboard" : "/before");      // провери, че имаш такъв route
+    await auth.login({ email: email.value, password: password.value });
+
+    if (auth.isAdmin) {
+      router.push({ name: "admin-dashboard" });
+    } else {
+      router.push(auth.profileCompleted ? { name: "dashboard" } : { name: "before" });
+    }
   } catch (e) {
     error.value = e?.response?.data?.message || "Invalid credentials";
   } finally {
@@ -44,7 +49,6 @@ async function submit() {
   }
 }
 </script>
-
 
 <style scoped>
 .inp { @apply w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring; }
