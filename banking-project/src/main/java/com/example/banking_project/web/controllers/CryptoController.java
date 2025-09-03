@@ -19,20 +19,17 @@ public class CryptoController {
     private final CryptoService service;
     public CryptoController(CryptoService service) { this.service = service; }
 
-    // достъпът се управлява от SecurityConfiguration -> permitAll за GET /simple-price
     @PreAuthorize("permitAll()")
     @GetMapping(value = "/simple-price", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<List<CryptoPriceDto>> getSimplePrice(
             @RequestParam @NotBlank String ids,
             @RequestParam(name = "vs") @NotBlank String vsCurrencies
     ) {
-        // нормализация
         String normIds = ids.toLowerCase(Locale.ROOT).trim();
         String normVs  = vsCurrencies.toLowerCase(Locale.ROOT).trim();
         return service.getSimplePrices(normIds, normVs);
     }
 
-    // достъпът се управлява от SecurityConfiguration -> permitAll за GET /history
     @PreAuthorize("permitAll()")
     @GetMapping(value = "/history/{id}/{vs}/{days}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<CryptoHistoryDto> getHistory(

@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public record PlaceOrderRequest(
         @NotNull UUID userId,
-        @NotBlank String iban,        // ИЗРИЧНО работим по IBAN
-        @NotBlank String symbol,      // "BTC"
-        @NotNull OrderSide side,      // BUY / SELL (тук ползваме BUY)
+        @NotBlank String iban,
+        @NotBlank String symbol,
+        @NotNull OrderSide side,
         @NotNull @DecimalMin("0.00000001") BigDecimal quantity
 ) {}
 

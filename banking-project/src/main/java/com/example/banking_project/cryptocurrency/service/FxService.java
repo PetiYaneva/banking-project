@@ -9,7 +9,6 @@ import java.math.RoundingMode;
 @Service
 public class FxService  {
 
-    // конфигурируем параметър (примерно 1 USD = 1.80 BGN). Поддържай актуален!
     @Value("${fx.usd_bgn_rate:1.80}")
     private BigDecimal usdToBgn;
 

@@ -27,8 +27,6 @@ public class TransactionController {
     private final IncomeService incomeService;
     private final ExpenseService expenseService;
 
-    // ===== USER endpoints =====
-
     @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @PostMapping("/new")
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody TransactionRequest request) {
@@ -62,7 +60,6 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getTransactionsByUserAndPeriod(userId, startDate, endDate));
     }
 
-    // Обобщения от Income/Expense services (по последни N месеца)
     @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and hasAuthority('PROFILE_COMPLETED'))")
     @GetMapping("/income/summary")
     public ResponseEntity<BigDecimal> getIncomeSummary(@RequestParam UUID userId,

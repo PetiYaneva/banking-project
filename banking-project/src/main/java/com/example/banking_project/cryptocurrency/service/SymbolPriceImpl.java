@@ -1,6 +1,5 @@
 package com.example.banking_project.cryptocurrency.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -27,7 +26,6 @@ public class SymbolPriceImpl implements SymbolPriceClient{
             Map.entry("SOL", "solana"),
             Map.entry("ADA", "cardano"),
             Map.entry("XRP", "ripple")
-            // ... добави твоите 20
     );
 
     @Override

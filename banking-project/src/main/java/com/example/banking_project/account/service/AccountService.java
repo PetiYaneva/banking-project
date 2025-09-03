@@ -25,7 +25,6 @@ public interface AccountService {
 
     TransferResponse transfer(TransferRequest request);
 
-    // Допълнително:
     List<Account> getAccountsByUserId(UUID userId);
     BigDecimal getTotalBalanceForUser(UUID userId);
 

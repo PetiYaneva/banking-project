@@ -18,7 +18,7 @@ public class CryptoPriceService {
 
     private static final long TTL_MS = 30_000L;
 
-    private final Cache<String, PriceEntry> cryptoPriceCache; // от CacheConfig
+    private final Cache<String, PriceEntry> cryptoPriceCache;
     private final SymbolPriceImpl symbolPriceClient;
 
     public BigDecimal getLiveUsdPrice(String symbol) {
@@ -47,7 +47,6 @@ public class CryptoPriceService {
         log.debug("[PRICE] {} = {} USD (src={})", symbol.toUpperCase(Locale.ROOT), scaled, source);
     }
 
-    /** dev-помощник: виж какво има в кеша (без fallback) */
     public Optional<PriceEntry> peek(String symbol) {
         return Optional.ofNullable(cryptoPriceCache.getIfPresent(symbol.toUpperCase(Locale.ROOT)));
     }

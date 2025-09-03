@@ -29,7 +29,6 @@ public interface LoanService {
 
     Optional<List<Loan>> getLoansByUserId(UUID userId);
 
-    // --- Нови справочни/админски методи ---
     List<Loan> getLoansByStatus(LoanStatus status);
     List<Loan> getLoansByStatusAndNextPaymentBetween(LoanStatus status, LocalDate from, LocalDate to);
     List<Loan> getLoansAppliedBetween(LocalDate from, LocalDate to);
@@ -40,10 +39,8 @@ public interface LoanService {
     List<Loan> getLoansByRemainingLte(BigDecimal maxRemaining);
     List<Loan> getLoansByMissedPaymentsGt(int minMissed);
 
-    /** Дължими към дата (ACTIVE с nextDateOfPayment <= date) - LoanView projection */
     List<LoanView> getDueLoanViews(LocalDate date);
 
-    /** Дължими към дата като пълни обекти */
     List<Loan> getActiveLoansDueBy(LocalDate date);
 
     List<Loan> getLoansByRepaymentAccount(UUID accountId);

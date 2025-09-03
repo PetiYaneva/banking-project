@@ -25,8 +25,6 @@ public class AccountController {
     private final AccountService accountService;
     private final TransactionService transactionService;
 
-    // -------- USER/ADMIN (профил попълнен) --------
-
     @PreAuthorize("hasAuthority('PROFILE_COMPLETED') and hasAnyRole('USER','ADMIN')")
     @GetMapping("/{userId}/accounts")
     public ResponseEntity<List<Account>> getUserAccounts(@PathVariable UUID userId) {
@@ -65,8 +63,6 @@ public class AccountController {
         List<TransactionTransferResponse> transactions = transactionService.getTransactionsByAccount(id);
         return ResponseEntity.ok(transactions);
     }
-
-    // -------- ADMIN-ONLY СПРАВКИ (само роля ADMIN, без PROFILE_COMPLETED) --------
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/high-balance")

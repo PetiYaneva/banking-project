@@ -28,11 +28,10 @@ public class LivePriceService {
     private final BinanceWebSocketClient ws;
     private final ObjectMapper mapper;
     private final CryptoSymbolRepository symbolRepo;
-    private final CryptoPriceService priceService; // <-- да ъпдейтваме кеша
+    private final CryptoPriceService priceService;
 
     private final Sinks.Many<Ticker> sink = Sinks.many().replay().latest();
 
-    // runtime cache на символите, които следим
     private volatile List<CryptoSymbol> symbols = List.of();
     private volatile long symbolsHash = 0L;
 
@@ -42,7 +41,6 @@ public class LivePriceService {
         connect();
     }
 
-    /** През 30 сек проверяваме: (1) жив ли е WS, (2) има ли промяна в символите. */
     @Scheduled(fixedDelay = 30_000)
     public void healthCheck() {
         boolean alive = ws.isAlive(30_000);
@@ -53,7 +51,6 @@ public class LivePriceService {
         }
     }
 
-    /** Публичен стрийм за фронтенд/други консумации */
     public Flux<Ticker> streamPrices() {
         return sink.asFlux();
     }
@@ -94,19 +91,16 @@ public class LivePriceService {
 
             private void handleTrade(JsonNode n) {
                 if (!"trade".equals(opt(n,"e"))) return;
-                String pair = opt(n,"s"); // BTCUSDT
+                String pair = opt(n,"s");
                 String priceStr = opt(n,"p");
                 if (pair == null || priceStr == null) return;
 
-                // намираме символа + coingecko id по pair
                 symbols.stream()
                         .filter(cs -> cs.getBinancePair().equalsIgnoreCase(pair))
                         .findFirst()
                         .ifPresent(cs -> {
                             BigDecimal price = new BigDecimal(priceStr);
-                            // a) емит към стрийма (id е coingeckoId за съвместимост с FE)
                             sink.tryEmitNext(new Ticker(cs.getCoingeckoId(), price));
-                            // b) ъпдейт към кеша (по символ, напр. "BTC")
                             priceService.updatePrice(cs.getSymbol(), price, "WS");
                         });
             }
@@ -121,7 +115,6 @@ public class LivePriceService {
         });
     }
 
-    /** Зарежда символите от БД и връща дали сетът се е променил. */
     private boolean reloadSymbolsIfChanged() {
         List<CryptoSymbol> fresh = symbolRepo.findAllByEnabledTrue();
         long hash = fresh.stream()

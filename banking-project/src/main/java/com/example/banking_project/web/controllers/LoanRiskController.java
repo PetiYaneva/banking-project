@@ -93,8 +93,6 @@ public class LoanRiskController {
         return ResponseEntity.ok(obligations != null ? obligations : BigDecimal.ZERO);
     }
 
-    // ---------- Нови ADMIN справки ----------
-
     @GetMapping("/admin/credit-history/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> getCreditHistoryStatus(@PathVariable UUID userId) {
