@@ -1,7 +1,6 @@
-import { http } from "./http";                // ← именуван импорт
+import { http } from "./http";               
 import { EventSourcePolyfill } from "event-source-polyfill";
 
-// Live prices via SSE
 export function openLiveStream(onMessage) {
   const token = localStorage.getItem("token");
   if (!token) return () => {};
@@ -20,7 +19,6 @@ export async function getSimplePrices(idsCsv, vs = "usd") {
   return http.get(`/api/crypto/simple-price`, { params: { ids: idsCsv, vs } });
 }
 
-// /api/crypto/history/{id}/{vs}/{days}
 export async function getHistory(id, vs = "usd", days = 7) {
   const normId   = String(id).toLowerCase().trim();
   const normVs   = (String(vs).toLowerCase().trim() || "usd");

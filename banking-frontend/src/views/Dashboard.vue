@@ -5,7 +5,6 @@ import { getUserAccounts, getUserTotalBalance } from "../api/account";
 import { getUserTransactions } from "../api/transactions";
 import { getSimplePrices } from "../api/crypto";
 import { CRYPTO_ASSETS } from "../constants/crypto";
-import { getLoansByUser } from "../api/loans";
 
 const auth = useAuth();
 const userId = computed(() => auth.user?.id || auth.userId);
@@ -13,12 +12,8 @@ const userId = computed(() => auth.user?.id || auth.userId);
 const loading = ref(true);
 const accounts = ref([]);
 const totalBalance = ref(0);
-const lastTx = ref([]);               
-const nextInstallment = ref(null);   
-const inc6 = ref([]);                
-const exp6 = ref([]);                
-const cryptoMini = ref([]);           
-const riskLevel = ref("Low");        
+const lastTx = ref([]);
+const cryptoMini = ref([]);
 
 function pickTotal(resp) {
   const d = resp?.data;
@@ -54,17 +49,6 @@ function pickTransactions(resp) {
   }));
 }
 
-function toBars(values) {
-  const w = 240, h = 72, gap = 6;
-  const n = Math.max(values?.length || 0, 1);
-  const max = Math.max(...values, 1);
-  const barW = Math.max((w - gap * (n - 1)) / n, 8);
-  return values.map((v, i) => {
-    const hh = Math.round((v / max) * (h - 8));
-    return { x: i * (barW + gap), y: h - hh, w: barW, h: hh };
-  });
-}
-
 async function load() {
   if (!userId.value) return;
   loading.value = true;
@@ -80,33 +64,24 @@ async function load() {
     try {
       const txRes = await getUserTransactions(userId.value);
       lastTx.value = pickTransactions(txRes).slice(0, 5);
-    } catch { lastTx.value = []; }
+    } catch {
+      lastTx.value = [];
+    }
 
-    nextInstallment.value = null;
-
-    // Зареждаме mini цените в режим top3 (BTC, ETH, BNB)
     await loadCryptoMini("top3");
-
-    if (!inc6.value.length) inc6.value = [0, 0, 0, 0, 0, 0];
-    if (!exp6.value.length) exp6.value = [0, 0, 0, 0, 0, 0];
-
-    const hasCredit = accounts.value.some(a => String(a.type).toUpperCase().includes("CREDIT"));
-    riskLevel.value = hasCredit ? "Medium" : "Low";
   } finally {
     loading.value = false;
   }
 }
 
-// ЗАМЕНИ цялата функция с тази
 async function loadCryptoMini(mode = "top3", dynamic = []) {
   cryptoMini.value = [];
   try {
-    // 1) idsCsv според режима
     const idBySym = Object.fromEntries(CRYPTO_ASSETS.map(a => [a.sym, a.id]));
     let idsCsv = "";
 
     if (mode === "top3") {
-      idsCsv = CRYPTO_ASSETS.slice(0, 3).map(c => c.id).join(","); // bitcoin,ethereum,binancecoin
+      idsCsv = CRYPTO_ASSETS.slice(0, 3).map(c => c.id).join(",");
     } else if (mode === "top20") {
       idsCsv = CRYPTO_ASSETS.map(c => c.id).join(",");
     } else if (mode === "dynamic") {
@@ -117,25 +92,20 @@ async function loadCryptoMini(mode = "top3", dynamic = []) {
       idsCsv = pickedIds.join(",");
     }
 
-    // 2) Викаме ендпойнта /api/crypto/simple-price?ids=...&vs=usd
     const resp = await getSimplePrices(idsCsv, "usd");
     const d = resp?.data;
 
-    // 3) Мап обратно към sym (BTC/ETH/BNB) и цена в USD
     const symById = Object.fromEntries(CRYPTO_ASSETS.map(a => [a.id, a.sym]));
     const arr = [];
 
     if (Array.isArray(d)) {
-      // формат: [{ id, prices: { usd } }, ...]
       for (const row of d) {
-        const id = row?.id;
-        if (!id) continue;
+        const id = row?.id; if (!id) continue;
         const sym = symById[id] || id.toUpperCase();
         const price = Number(row?.prices?.usd ?? row?.usd ?? 0);
         arr.push({ sym, price, change: 0 });
       }
     } else if (d && typeof d === "object") {
-      // формат: { id: { usd }, ... }
       for (const [id, obj] of Object.entries(d)) {
         const sym = symById[id] || id.toUpperCase();
         const price = Number(obj?.usd ?? 0);
@@ -143,7 +113,6 @@ async function loadCryptoMini(mode = "top3", dynamic = []) {
       }
     }
 
-    // 4) Редът да следва заявката
     const idsOrder = idsCsv ? idsCsv.split(",") : [];
     if (idsOrder.length) {
       const rank = Object.fromEntries(idsOrder.map((id, i) => [id, i]));
@@ -157,16 +126,15 @@ async function loadCryptoMini(mode = "top3", dynamic = []) {
 }
 
 onMounted(load);
-
-// по желание да можеш да презареждаш мини списъка отвън
-defineExpose({ load, loadCryptoMini, toBars });
+defineExpose({ load, loadCryptoMini });
 </script>
 
 <template>
   <div class="space-y-6">
-    <!-- KPI Row -->
+    <!-- KPI Row (без „Риск ниво“) -->
     <section class="grid grid-cols-12 gap-4">
-      <div class="col-span-12 md:col-span-4">
+      <!-- Общ баланс -->
+      <div class="col-span-12 md:col-span-6">
         <div class="bg-white border rounded-2xl p-5">
           <div class="text-slate-500 text-xs">Общ баланс</div>
           <div class="text-2xl font-semibold tabular-nums mt-1">
@@ -180,42 +148,27 @@ defineExpose({ load, loadCryptoMini, toBars });
         </div>
       </div>
 
-      <div class="col-span-12 md:col-span-4">
+      <!-- Кредити (линкове към страница за кредити и към отчет за риск) -->
+      <div class="col-span-12 md:col-span-6">
         <div class="bg-white border rounded-2xl p-5">
-          <div class="text-slate-500 text-xs">Следваща вноска по кредит</div>
-          <div class="mt-1">
-            <div v-if="nextInstallment" class="text-2xl font-semibold tabular-nums">
-              {{ (nextInstallment.amount||0).toLocaleString('bg-BG') }} $
-            </div>
-            <div v-else class="text-2xl font-semibold">—</div>
-          </div>
-          <div class="text-xs text-slate-500 mt-2">
-            Дата: {{ nextInstallment?.date || '—' }}
-          </div>
-          <RouterLink v-if="nextInstallment" to="/loans" class="mt-3 inline-block text-sm underline decoration-dotted">
-            Виж кредитите
+          <div class="text-slate-500 text-xs">Кредити</div>
+          <RouterLink
+            to="/loans"
+            class="mt-2 block rounded-md bg-sky-600 hover:bg-sky-700 text-white text-center px-4 py-2"
+          >
+            Отиди към кредитите
           </RouterLink>
-        </div>
-      </div>
-
-      <div class="col-span-12 md:col-span-4">
-        <div class="bg-white border rounded-2xl p-5">
-          <div class="text-slate-500 text-xs">Риск ниво</div>
-          <div
-            class="inline-flex items-center gap-2 mt-2 text-sm px-2.5 py-1 rounded-full border"
-            :class="riskLevel==='High' ? 'text-rose-700 border-rose-300 bg-rose-50'
-                  : riskLevel==='Medium' ? 'text-amber-700 border-amber-300 bg-amber-50'
-                  : 'text-emerald-700 border-emerald-300 bg-emerald-50'">
-            <span class="w-1.5 h-1.5 rounded-full"
-              :class="riskLevel==='High' ? 'bg-rose-500' : riskLevel==='Medium' ? 'bg-amber-500' : 'bg-emerald-500'"></span>
-            {{ riskLevel }}
-          </div>
-          <RouterLink to="/reports" class="mt-3 block text-sm underline decoration-dotted">Генерирай отчет</RouterLink>
+          <RouterLink
+            to="/reports"
+            class="mt-3 block rounded-md border text-center px-4 py-2 hover:bg-slate-50"
+          >
+            Риск оценка (отчет)
+          </RouterLink>
         </div>
       </div>
     </section>
 
-        <!-- Crypto Prices Row (left: 3 цени, right: линкове) -->
+    <!-- Crypto Prices Row (left: 3 цени, right: линкове) -->
     <section class="grid grid-cols-12 gap-4">
       <!-- LEFT: 3 цени -->
       <div class="col-span-12 lg:col-span-8">
@@ -274,7 +227,6 @@ defineExpose({ load, loadCryptoMini, toBars });
       </div>
     </section>
 
-
     <!-- Latest Transactions -->
     <section class="bg-white border rounded-2xl p-5">
       <div class="flex items-center justify-between mb-3">
@@ -298,7 +250,7 @@ defineExpose({ load, loadCryptoMini, toBars });
               <td class="py-2">{{ t.type }}</td>
               <td class="py-2">{{ t.description || '-' }}</td>
               <td class="py-2">{{ t.accountIban || t.iban || '-' }}</td>
-              <td class="py-2 text-right" :class="t.type==='EXPENSE' ? 'text-rose-600' : t.type==='INCOME' ? 'text-emerald-600' : ''">
+              <td class="py-2 text-right">
                 {{ (t.amount ?? 0).toLocaleString('bg-BG', { minimumFractionDigits: 2 }) }} BGN
               </td>
             </tr>
