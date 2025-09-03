@@ -31,3 +31,16 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Java backend
+target/
+*.iml
+*.class
+!.mvn/wrapper/maven-wrapper.jar
+
+# Frontend Vue
+banking-frontend/node_modules/
+banking-frontend/dist/
+banking-frontend/.vite/
+banking-frontend/.env
+
