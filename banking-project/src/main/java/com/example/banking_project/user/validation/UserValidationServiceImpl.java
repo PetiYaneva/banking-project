@@ -22,10 +22,8 @@ public class UserValidationServiceImpl implements UserValidationService {
         }
 
         // 2. Празни полета
-        if (!StringUtils.hasText(request.getFirstName()) ||
-                !StringUtils.hasText(request.getLastName()) ||
-                !StringUtils.hasText(request.getEmail()) ||
-                !StringUtils.hasText(request.getPassword())) {
+        if (!StringUtils.hasText(request.getEmail()) ||
+            !StringUtils.hasText(request.getPassword())) {
             throw new IllegalArgumentException("All fields are required.");
         }
 

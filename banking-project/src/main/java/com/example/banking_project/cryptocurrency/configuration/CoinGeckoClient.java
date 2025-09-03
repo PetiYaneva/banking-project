@@ -49,20 +49,20 @@ public class CoinGeckoClient implements MarketDataClient {
     public Mono<CryptoHistoryDto> history(String id, String vsCurrency, String days) {
         return client.get()
                 .uri(uri -> uri.path("/coins/{id}/market_chart")
-                        .queryParam("vs_currency", vsCurrency)
+                        .queryParam("vs_currency", vsCurrency.toLowerCase(Locale.ROOT))
                         .queryParam("days", days)
                         .build(id))
                 .retrieve()
                 .bodyToMono(Map.class)
-                .map(body -> {
-                    List<List<Object>> prices = (List<List<Object>>) body.getOrDefault("prices", List.of());
-                    List<CryptoHistoryPointDto> points = new ArrayList<>();
-                    for (var row : prices) {
-                        long ts = ((Number) row.get(0)).longValue();
-                        BigDecimal price = toBigDecimal(row.get(1));
+                .map(raw -> {
+                    List<List<Object>> prices = (List<List<Object>>) raw.getOrDefault("prices", List.of());
+                    List<CryptoHistoryPointDto> points = new ArrayList<>(prices.size());
+                    for (List<Object> p : prices) {
+                        long ts = ((Number) p.get(0)).longValue();
+                        BigDecimal price = toBigDecimal(p.get(1));
                         points.add(new CryptoHistoryPointDto(ts, price));
                     }
-                    return new CryptoHistoryDto(id, vsCurrency, points);
+                    return new CryptoHistoryDto(id, vsCurrency.toLowerCase(Locale.ROOT), points);
                 });
     }
 

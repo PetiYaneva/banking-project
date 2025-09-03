@@ -43,9 +43,19 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/enums/employment").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/users/profile/completed").permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/crypto/simple-price").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/crypto/history/**").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/users/profile/complete").authenticated()
+
                         .requestMatchers("/api/**").hasAuthority("PROFILE_COMPLETED")
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)

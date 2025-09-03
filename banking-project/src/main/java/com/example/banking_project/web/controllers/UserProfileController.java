@@ -6,14 +6,16 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users/profile")
 @RequiredArgsConstructor
-public class ProfileController {
+public class UserProfileController {
 
     private final ProfileService profileService;
 
@@ -23,5 +25,14 @@ public class ProfileController {
                                                 @Valid @RequestBody CompleteProfileRequest request) {
         profileService.completeProfileByEmail(principal.getUsername(), request);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @GetMapping("/completed")
+    public ResponseEntity<Boolean> isProfileCompleted() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+        boolean completed = profileService.isProfileCompleted(email);
+        return ResponseEntity.ok(completed);
     }
 }

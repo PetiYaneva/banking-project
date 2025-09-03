@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @ConditionalOnProperty(name = "crypto.source", havingValue = "binance")
 @Component
@@ -18,8 +19,7 @@ public class BinanceClient implements MarketDataClient {
 
     private final WebClient client;
 
-    // Речник: CoinGecko-like ID → Binance Symbol (USDT pair)
-    private static final Map<String, String> SYMBOL_MAP = Map.ofEntries(
+    private static final Map<String, String> ID_TO_PAIR = Map.ofEntries(
             Map.entry("bitcoin", "BTCUSDT"),
             Map.entry("ethereum", "ETHUSDT"),
             Map.entry("binancecoin", "BNBUSDT"),
@@ -43,39 +43,37 @@ public class BinanceClient implements MarketDataClient {
     );
 
     public BinanceClient(WebClient defaultWebClient,
-                         @Value("${crypto.binance.rest-base-url}") String baseUrl) {
+                         @Value("${crypto.binance.rest-base-url:https://api.binance.com}") String baseUrl) {
         this.client = defaultWebClient.mutate().baseUrl(baseUrl).build();
     }
 
-    @Override
+    private static String toUsdtPair(String symbol) {
+        String s = symbol.toUpperCase(Locale.ROOT);
+        String fromId = ID_TO_PAIR.get(symbol.toLowerCase(Locale.ROOT));
+        return (fromId != null) ? fromId : (s.endsWith("USDT") ? s : s + "USDT");
+    }
+
     public Mono<List<CryptoPriceDto>> simplePrice(String idsCsv, String vsCurrenciesCsv) {
         List<String> ids = Arrays.stream(idsCsv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .toList();
+                .map(String::trim).filter(s -> !s.isBlank()).toList();
 
         return Flux.fromIterable(ids)
-                .flatMap(id -> {
-                    String symbol = SYMBOL_MAP.getOrDefault(id.toLowerCase(), "BTCUSDT"); // fallback към BTC
-                    return client.get()
-                            .uri(uriBuilder -> uriBuilder
-                                    .path("/api/v3/ticker/price")
-                                    .queryParam("symbol", symbol)
-                                    .build())
-                            .retrieve()
-                            .bodyToMono(Map.class)
-                            .map(m -> {
-                                String priceStr = String.valueOf(m.get("price"));
-                                BigDecimal usd = new BigDecimal(priceStr); // USDT ~= USD
-                                return new CryptoPriceDto(id, Map.of("usd", usd));
-                            });
-                })
+                .flatMap(id -> client.get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v3/ticker/price")
+                                .queryParam("symbol", ID_TO_PAIR.getOrDefault(id.toLowerCase(), "BTCUSDT"))
+                                .build())
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .map(m -> {
+                            String priceStr = String.valueOf(m.get("price"));
+                            BigDecimal usd = new BigDecimal(priceStr); // USDT ~= USD
+                            return new CryptoPriceDto(id, Map.of("usd", usd));
+                        }))
                 .collectList();
     }
 
-    @Override
     public Mono<CryptoHistoryDto> history(String id, String vsCurrency, String days) {
         return Mono.error(new UnsupportedOperationException(
-                "Binance history not implemented; consider using CoinGecko or Binance /klines"));
+                "Binance history not implemented; consider /api/v3/klines"));
     }
 }

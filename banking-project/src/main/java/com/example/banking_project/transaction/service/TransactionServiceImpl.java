@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -185,12 +186,13 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public List<TransactionTransferResponse> getAllTransactions() {
-        return null;
+        return transactionRepository.findAll().stream()
+                .map(mapper::fromEntity)
+                .toList();
     }
 
     @Override
     public void recordExpense(UUID userId, String iban, BigDecimal amount, String description) {
-        // дебит на акаунта + транзакция тип WITHDRAWAL (или TRANSFER с isExpense=true)
         var account = accountBalanceService.getAccountByIban(iban);
 
         accountBalanceService.updateBalance(iban, amount, TransactionType.WITHDRAWAL);
@@ -198,7 +200,7 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction tx = Transaction.builder()
                 .amount(amount)
                 .createdOn(LocalDate.now())
-                .currency(java.util.Currency.getInstance(
+                .currency(Currency.getInstance(
                         account.getCurrencyCode() != null ? account.getCurrencyCode() : "BGN"))
                 .description(description)
                 .transactionStatus(TransactionStatus.SUCCEEDED)
@@ -225,7 +227,7 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction tx = Transaction.builder()
                 .amount(amount)
                 .createdOn(LocalDate.now())
-                .currency(java.util.Currency.getInstance(
+                .currency(Currency.getInstance(
                         account.getCurrencyCode() != null ? account.getCurrencyCode() : "BGN"))
                 .description(description)
                 .transactionStatus(TransactionStatus.SUCCEEDED)
@@ -241,5 +243,90 @@ public class TransactionServiceImpl implements TransactionService {
                 .amount(tx.getAmount())
                 .transaction(tx)
                 .build());
+    }
+
+    // ===== ADMIN списъци по период / филтри =====
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriod(LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.getAllByPeriod(startDate, endDate).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriodAndType(LocalDate startDate, LocalDate endDate, TransactionType type) {
+        return transactionRepository.getAllByPeriodAndType(startDate, endDate, type.toString()).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriodAndStatus(LocalDate startDate, LocalDate endDate, String status) {
+        return transactionRepository.getAllByPeriodAndStatus(startDate, endDate, status).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriodAndCurrency(LocalDate startDate, LocalDate endDate, String currency) {
+        return transactionRepository.getAllByPeriodAndCurrency(startDate, endDate, currency).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getByAccountAndPeriod(UUID accountId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.getByAccountAndPeriod(accountId, startDate, endDate).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriodAndMinAmount(LocalDate startDate, LocalDate endDate, BigDecimal minAmount) {
+        return transactionRepository.getAllByPeriodAndMinAmount(startDate, endDate, minAmount).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> getAllByPeriodAndAmountBetween(LocalDate startDate, LocalDate endDate, BigDecimal minAmount, BigDecimal maxAmount) {
+        return transactionRepository.getAllByPeriodAndAmountBetween(startDate, endDate, minAmount, maxAmount).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    @Override
+    public List<TransactionTransferResponse> searchAllByDescriptionInPeriod(LocalDate startDate, LocalDate endDate, String query) {
+        return transactionRepository.searchAllByDescriptionInPeriod(startDate, endDate, query).stream()
+                .map(mapper::fromView)
+                .toList();
+    }
+
+    // ===== ADMIN агрегати =====
+
+    @Override
+    public BigDecimal sumIncomeByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.sumIncomeByUserAndPeriod(userId, startDate, endDate);
+    }
+
+    @Override
+    public BigDecimal sumExpenseByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.sumExpenseByUserAndPeriod(userId, startDate, endDate);
+    }
+
+    @Override
+    public BigDecimal netCashFlowByUserAndPeriod(UUID userId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.netCashFlowByUserAndPeriod(userId, startDate, endDate);
+    }
+
+    @Override
+    public BigDecimal sumIncomeByAccountAndPeriod(UUID accountId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.sumIncomeByAccountAndPeriod(accountId, startDate, endDate);
+    }
+
+    @Override
+    public BigDecimal sumExpenseByAccountAndPeriod(UUID accountId, LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.sumExpenseByAccountAndPeriod(accountId, startDate, endDate);
     }
 }

@@ -11,7 +11,6 @@ public class LoanApplicationResponse {
     private boolean approved;
     private String riskClass;
     private String recommendation;
-
     private UUID loanId;
     private BigDecimal monthlyPayment;
 }

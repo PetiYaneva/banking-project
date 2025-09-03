@@ -12,7 +12,6 @@ import java.util.UUID;
 
 public interface AccountService {
     Account debitByIban(String iban, BigDecimal amount);
-
     Account creditByIban(String iban, BigDecimal amount);
 
     Account create(CreateAccountRequest request, UUID userId);
@@ -26,9 +25,16 @@ public interface AccountService {
 
     TransferResponse transfer(TransferRequest request);
 
-    // Допълнително:
     List<Account> getAccountsByUserId(UUID userId);
     BigDecimal getTotalBalanceForUser(UUID userId);
 
-     void createCreditAccount(LoanRequest request, UUID userId);
+    void createCreditAccount(LoanRequest request, UUID userId);
+
+    List<Account> getAccountsByBalanceGte(BigDecimal minBalance);
+    List<Account> getAccountsByBalanceLte(BigDecimal maxBalance);
+    List<Account> getAccountsByCurrency(String currency); // виж бележката по-долу
+    List<Account> getActiveAccounts();
+    List<Account> getInactiveAccounts();
+    List<Account> getAllAccountsOrderByBalanceDesc();
+    List<Account> getAllAccountsOrderByCreatedOnAsc();
 }

@@ -1,21 +1,17 @@
 package com.example.banking_project.web.dto.crypto;
 
-
 import com.example.banking_project.cryptocurrency.model.OrderSide;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public record PlaceOrderRequest(
-        UUID userId,
-        String iban,
-        String asset,
-        OrderSide side,
-        BigDecimal quantity
-) {
-    // helper за да присадим userId от JWT в контролера
-    public PlaceOrderRequest withUserId(UUID newUserId) {
-        return new PlaceOrderRequest(newUserId, this.iban, this.asset, this.side, this.quantity);
-    }
-}
+        @NotNull UUID userId,
+        @NotBlank String iban,
+        @NotBlank String symbol,
+        @NotNull OrderSide side,
+        @NotNull @DecimalMin("0.00000001") BigDecimal quantity
+) {}
+
 
